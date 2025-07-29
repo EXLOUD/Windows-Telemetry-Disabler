@@ -49,8 +49,6 @@
 **Author:** EXLOUD  
 **GitHub:** https://github.com/EXLOUD
 
-**Language:** [English](#) | [Українська](README-ua.md)
-
 A script to disable telemetry and data collection in Windows operating system.
 
 ## 📋 Description
