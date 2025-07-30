@@ -265,8 +265,8 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
 	
 	# --- SPP Config ---
-	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
-	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
+	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
+	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
 	
 	# --- EventLog Config ---
 	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
