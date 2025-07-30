@@ -157,15 +157,16 @@ function Disable-WindowsFeature {
     try {
         $feature = Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction Stop
         if ($feature.State -eq 'Disabled') {
-            Write-HostEx "  [ SKIP ] Feature already disabled: $FeatureName" -ForegroundColor Gray
+			Write-HostEx "  `n[i] Disabling feature: $FeatureName" -ForegroundColor Yellow
+            Write-HostEx "    [SKIP] Feature already disabled: $FeatureName" -ForegroundColor Gray
         } else {
-            Write-HostEx "  [i] Disabling feature: $FeatureName" -ForegroundColor Yellow
+            Write-HostEx "  `n[i] Disabling feature: $FeatureName" -ForegroundColor Yellow
             DISM /Online /Disable-Feature /FeatureName:$FeatureName /NoRestart /Quiet | Out-Null
             if ($LASTEXITCODE -eq 0) {
-                Write-HostEx "  [ OK ] Feature disabled: $FeatureName" -ForegroundColor Green
+                Write-HostEx "  [OK] Feature disabled: $FeatureName" -ForegroundColor Green
                 $script:Stats.FeaturesDisabled++
             } else {
-                Write-HostEx "  [ ERROR ] Error disabling feature: $FeatureName" -ForegroundColor Red
+                Write-HostEx "    Cannot disable feature - likely already removed from system: $FeatureName" -ForegroundColor Cyan
             }
         }
     } catch {
@@ -865,11 +866,149 @@ Write-HostEx "  [ OK ] Diagnosis folder processed" -ForegroundColor Green
 # ---------- 6. Optional Windows Features ----------
 Write-HostEx "`n[>] STEP 6: Disabling unnecessary components..." -ForegroundColor Magenta
 @(
-    #'SMB1Protocol',
-    #'SMB1Protocol-Client',
-    #'SMB1Protocol-Server',
-    'MicrosoftWindowsPowerShellV2Root',
-    'MicrosoftWindowsPowerShellV2'
+  # === Critical Security Risk Components - SMB1 and Legacy Protocols ===
+  # 'SMB1Protocol',
+  # 'SMB1Protocol-Client',
+  # 'SMB1Protocol-Server',
+  # 'SMB1Protocol-Deprecation',
+  # 'FS-SMB1',
+  # 'ClientForNFS-Infrastructure',
+  # 'ServicesForNFS-ClientOnly',
+  # 'ServicesForNFS-ServerAndClient',
+	
+  # == Insecure Network Protocols and Services ===
+  # 'TelnetClient',
+  # 'TelnetServer',
+  # 'TFTP',
+  # 'SimpleTcpip',
+  # 'SimpleTCP',
+  # 'RasRip',
+  # 'RIP',
+  # 'SNMP',
+  # 'LPR-Print-Server',
+  # 'Print-LPDPrintService',
+  # 'Printing-Foundation-LPRPortMonitor',
+  # 'IIS-FTPServer',
+  # 'IIS-FTPSvc',
+  # 'IIS-FTPExtensibility'
+	
+  # === Microsoft Message Queuing (MSMQ) ===
+  'MSMQ-Container',
+  'MSMQ-Server',
+  'MSMQ-Services',
+  'MSMQ-Triggers',
+  'MSMQ-ADIntegration',
+  'MSMQ-HTTP',
+  'MSMQ-Multicast',
+  'MSMQ-DCOMProxy',
+
+  # === Print and Document Services ===
+  # 'Printing-PrintToPDFServices-Features',
+  # 'Printing-XPSServices-Features',
+  # 'Printing-Foundation-Features',
+  # 'Printing-Foundation-InternetPrinting-Client',
+  # 'Printing-Foundation-LPDPrintService',
+  # 'Printing-Foundation-LPRPortMonitor',
+  # 'FaxServicesClientPackage',
+  # 'ScanManagementConsole',
+  # 'Xps-Foundation-Xps-Viewer',
+  # 'Microsoft-Windows-Printing-XPSServices-Package',
+  # 'TIFFIFilter',
+
+  # === Remote Access and VPN Components ===
+  'RemoteAccess',
+  'DirectAccess-VPN',
+  'Routing',
+  'RasRip', 
+  'RasCMAK',
+  'RSAT-RemoteAccess',
+  'RSAT-RemoteAccess-Mgmt',
+  'RSAT-RemoteAccess-PowerShell',
+  # === Directory Services and Active Directory Components ===
+  'DirectoryServices-ADAM-Client',
+  'RSAT-ADDS',
+  'RSAT-ADDS-Tools',
+  'RSAT-AD-AdminCenter', 
+  'RSAT-AD-PowerShell',
+  'RSAT-ADLDS',
+  'RSAT-DNS-Server',
+
+  # === Enterprise and Server Features (Workstation Hardening) ===
+  'DataCenterBridging',
+  'MultiPoint-Connector',
+  'MultiPoint-Connector-Services',
+  'MultiPoint-Tools',
+  'HostGuardian',
+  'ServerCore-Drivers-General',
+  'ServerCore-Drivers-General-WOW64',
+  
+  # === Hyper-V and Virtualization Components ===
+  # P.S. Don't worry - virtual machines like VirtualBox or VMware - work without this component
+  'Microsoft-Hyper-V-All',
+  'Microsoft-Hyper-V',
+  'Microsoft-Hyper-V-Tools-All',
+  'Microsoft-Hyper-V-Management-PowerShell',
+  'Microsoft-Hyper-V-Hypervisor',
+  'Microsoft-Hyper-V-Services',
+  'Microsoft-Hyper-V-Management-Clients',
+  'HypervisorPlatform',
+  'VirtualMachinePlatform',
+  'Containers-DisposableClientVM',
+
+  # === Internet Information Services (IIS) ===
+  # IIS = Microsoft Web Server (analogue of Apache/Nginx)
+  # Used to host websites on Windows Server
+  # Supports ASP.NET, PHP and other server technologies
+  # Works as a service in the background
+  'IIS-WebServerRole',
+  'IIS-WebServer',
+  'IIS-CommonHttpFeatures',
+  'IIS-HttpErrors',
+  'IIS-HttpRedirect',
+  'IIS-ApplicationDevelopment',
+  'IIS-NetFxExtensibility45',
+  'IIS-NetFxExtensibility',
+  'IIS-ISAPIExtensions',
+  'IIS-ISAPIFilter',
+  'IIS-ASPNET45',
+  'IIS-ASPNET',
+  'IIS-CGI',
+  'IIS-ServerSideIncludes',
+  'IIS-CustomLogging',
+  'IIS-LoggingLibraries',
+  'IIS-RequestMonitor',
+  'IIS-HttpTracing',
+  'IIS-BasicAuthentication',
+  'IIS-WindowsAuthentication',
+  'IIS-DigestAuthentication',
+  'IIS-ClientCertificateMappingAuthentication',
+  'IIS-IISCertificateMappingAuthentication',
+  'IIS-URLAuthorization',
+  'IIS-RequestFiltering',
+  'IIS-IPSecurity',
+  'IIS-Performance',
+  'IIS-HttpCompressionStatic',
+  'IIS-HttpCompressionDynamic',
+  'IIS-WebDAV',
+  'IIS-LegacySnapIn',
+  'IIS-ManagementConsole',
+  'IIS-IIS6ManagementCompatibility',
+  'IIS-Metabase',
+  'IIS-HostableWebCore',
+  'IIS-StaticContent',
+  'IIS-DefaultDocument',
+  'IIS-DirectoryBrowsing',
+  'IIS-ODBC',
+
+  # === Legacy PowerShell and Scripting Components ===
+  # If y want write PS scripts - use VS Code with PS syntax and analyzer plugin
+  'MicrosoftWindowsPowerShellV2Root',
+  'MicrosoftWindowsPowerShellV2',
+  'WindowsPowerShellWebAccess',
+  'MicrosoftWindowsPowerShellISE',
+  'Microsoft.Windows.PowerShell.ISE',
+  'MicrosoftWindowsPowerShellV2Engine'
+
 ) | ForEach-Object { Disable-WindowsFeature $_ }
 
 # ---------- 7.  Remove built-in UWP / APPX (bloatware) ----------
