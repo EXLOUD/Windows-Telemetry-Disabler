@@ -199,11 +199,11 @@ Copyright (c) 2025 EXLOUD
 
 ---
  
-  <div align="center">
+<div align="center">
   
-    **Попередження:** Цей інструмент змінює системні налаштування Windows. Переконайтесь, що розумієте наслідки перед використанням.
+**Попередження:** Цей інструмент змінює системні налаштування Windows. Переконайтесь, що розумієте наслідки перед використанням.
 
-    <a href="https://github.com/EXLOUD/windows-telemetry-disabler">
-      <img src="https://img.shields.io/badge/⬆️_На_початок-blue?style=for-the-badge">
-    </a>
-  </div>
+  <a href="https://github.com/EXLOUD/windows-telemetry-disabler">
+     <img src="https://img.shields.io/badge/⬆️_На_початок-blue?style=for-the-badge">
+  </a>
+</div>
