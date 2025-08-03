@@ -199,10 +199,10 @@ Copyright (c) 2025 EXLOUD
 
 ---
 
+<div align="center">
+
 **Попередження:** Цей інструмент змінює системні налаштування Windows. Переконайтесь, що розумієте наслідки перед використанням.
 
-  <div align="center">
-    <a href="https://github.com/EXLOUD/windows-telemetry-disabler">
-      <img src="https://img.shields.io/badge/⬆️_На_початок-blue?style=for-the-badge">
-    </a>
-  </div>
+**[⬆ Back to Top](#winget-installer)**
+
+</div>
