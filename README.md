@@ -198,10 +198,10 @@ SOFTWARE.
 
 ---
 
+<div align="center">
+
 **Warning:** This tool modifies Windows system settings. Make sure you understand the consequences before use.
 
-  <div align="center">
-   <a href="https://github.com/EXLOUD/windows-telemetry-disabler">
-     <img src="https://img.shields.io/badge/⬆️_Back_to_Top-blue?style=for-the-badge">
-   </a>
-  </div>
+**[⬆ Back to Top](#windows-telemetry-disabler)**
+
+</div>
