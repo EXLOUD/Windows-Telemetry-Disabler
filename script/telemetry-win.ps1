@@ -45,51 +45,55 @@ $script:Stats = @{
     ItemsFailed       = 0
 }
 
-function Set-RegistryValue
-{
-	[CmdletBinding(SupportsShouldProcess)]
-	param (
-		[Parameter(Mandatory)]
-		[string]$Path,
-		[Parameter(Mandatory)]
-		[string]$Name,
-		[Parameter(Mandatory)]
-		[object]$Value,
-		[string]$Type = 'DWord'
-	)
-	
-	try
-	{
-		if (!(Test-Path $Path))
-		{
-			if ($PSCmdlet.ShouldProcess($Path, 'Create key if not exists'))
-			{
-				Write-HostEx "  [+] Creating key: $Path" -ForegroundColor Yellow
-				New-Item -Path $Path -Force | Out-Null
-			}
-		}
-		
-		$current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
-		if ($null -ne $current.$Name -and "$($current.$Name)" -eq "$Value")
-		{
-			Write-HostEx "  [ SKIP ] Already set: $Name = $Value" -ForegroundColor Gray
-			$script:Stats.RegistrySkipped++
-			return
-		}
-		
-		$target = "$Path\$Name"
-		if ($PSCmdlet.ShouldProcess($target, "Set $Value (Type=$Type)"))
-        {
-            Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
-            Write-HostEx "  [ OK ] Applied: $Path\$Name = $Value" -ForegroundColor Green
+function Set-RegistryValue {
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][object]$Value,
+        [string]$Type = 'DWord'
+    )
+
+    try {
+        if (!(Test-Path $Path)) {
+            if ($PSCmdlet.ShouldProcess($Path, 'Create key')) {
+                Write-HostEx "  [+] Creating key: $Path" -ForegroundColor Yellow
+                New-Item -Path $Path -Force | Out-Null
+            }
+        }
+
+        $current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
+        $currentVal = if ($Name -eq '(Default)') { (Get-Item -LiteralPath $Path).GetValue('') } else { $current.$Name }
+
+        if ($Type -eq 'ExpandString' -and $currentVal -is [string]) {
+            $currentVal = [System.Environment]::ExpandEnvironmentVariables($currentVal)
+            $desiredVal = [System.Environment]::ExpandEnvironmentVariables($Value)
+        } else {
+            $desiredVal = $Value
+        }
+
+        if ($null -ne $currentVal -and "$currentVal" -eq "$desiredVal") {
+            Write-HostEx "  [ SKIP ] Already set: $Name = $desiredVal" -ForegroundColor Gray
+            $script:Stats.RegistrySkipped++
+            return
+        }
+
+        $target = "$Path\$Name"
+        if ($PSCmdlet.ShouldProcess($target, "Set $desiredVal (Type=$Type)")) {
+            if ($Name -eq '(Default)') {
+                # (Default) задається через Set-Item
+                Set-Item -LiteralPath $Path -Value $Value -Force
+            } else {
+                Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
+            }
+            Write-HostEx "  [ OK ] Applied: $Path\$Name = $desiredVal" -ForegroundColor Green
             $script:Stats.RegistryApplied++
         }
-		
-	}
-	catch
-	{
-		Write-HostEx "  [ ERROR ] Error setting $Name`: $_" -ForegroundColor Red
-	}
+    }
+    catch {
+        Write-HostEx "  [ ERROR ] Error setting $Name`: $_" -ForegroundColor Red
+        $script:Stats.RegistryFailed++
+    }
 }
 
 function Disable-ServiceSafely {
@@ -284,6 +288,10 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='DontRetryOnError';                        Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='IsCensusDisabled';                        Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='TaskEnableRun';                           Value=0},
+    
+    # --- MobSync ---
+    @{Path='Registry::HKEY_CLASSES_ROOT\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disable'; Type='ExpandString'},
+    @{Path='Registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disable'; Type='ExpandString'},
 
     # --- SQMClient ---
     @{Path='HKLM:\SOFTWARE\Microsoft\SQMClient\IE';                                        Name='CEIPEnable';                                     Value=0},
@@ -546,31 +554,6 @@ $reg = @(
 
 Write-HostEx "Processing $($reg.Count) registry settings..." -ForegroundColor White
 $reg | ForEach-Object { Set-RegistryValue @_ }
-
-# ---------- Disable MobSync COM object ----------
-Write-HostEx "`n[>] Disabling MobSync COM object..." -ForegroundColor Magenta
-
-$mobsyncPaths = @(
-    "HKCR:\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32",
-    "HKCR:\WOW6432Node\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32"
-)
-
-$disabledPath = "%SystemRoot%\System32\mobsync.exe.Disable"
-
-foreach ($regPath in $mobsyncPaths) {
-    try {
-        Write-HostEx "  [i] Checking MobSync registry path..." -ForegroundColor Cyan
-        if (Test-Path $regPath) {
-            Write-HostEx "  [i] Disabling MobSync COM object..." -ForegroundColor Cyan
-            Set-ItemProperty -Path $regPath -Name "(Default)" -Value $disabledPath -ErrorAction Stop
-            Write-HostEx "  [ OK ] MobSync COM object disabled" -ForegroundColor Green
-        } else {
-            Write-HostEx "  [ SKIP ] MobSync registry path not found" -ForegroundColor Gray
-        }
-    } catch {
-        Write-HostEx "  [ ERROR ] Failed to disable MobSync COM object: $_" -ForegroundColor Red
-    }
-}
 
 # ---------- 2. Create Scheduled Task to enforce AllowTelemetry = 0 ----------
 Write-HostEx "`n[>] STEP 2: Creating scheduled task to enforce AllowTelemetry = 0..." -ForegroundColor Magenta
