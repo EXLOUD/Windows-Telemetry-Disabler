@@ -317,8 +317,11 @@ $reg = @(
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\NetCore';                      Name='Start';                                          Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\RadioMgr';                     Name='Start';                                          Value=0},
 
-    # --- Geolocation Service ---
+    # --- Geolocation ---
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc';                                Name='Start';                                        Value=4},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableLocation';                              Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableLocationScripting';                     Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableWindowsLocationProvider';               Value=1},
 
     # --- DiagTrack services ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='DiagTrackAuthorization';                       Value=0},
