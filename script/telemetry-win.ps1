@@ -283,7 +283,7 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\AIT';        Name='AITEnable';                                    Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='DontRetryOnError';                        Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='IsCensusDisabled';                        Value=1},
-    @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='TaskEnableRun';                           Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='TaskEnableRun';                           Value=0},
 
     # --- SQMClient ---
     @{Path='HKLM:\SOFTWARE\Microsoft\SQMClient\IE';                                        Name='CEIPEnable';                                     Value=0},
@@ -302,6 +302,8 @@ $reg = @(
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\Microsoft-Windows-Rdp-Graphics-RdpIdd-Trace'; Name='Start';                            Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\Circular Kernel Context Logger'; Name='Start';                                         Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\SQMLogger';                      Name='Start';                                         Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\NetCore';                      Name='Start';                                          Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\RadioMgr';                     Name='Start';                                          Value=0},
 
     # --- DiagTrack services ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='DiagTrackAuthorization';                       Value=0},
@@ -545,6 +547,31 @@ $reg = @(
 Write-HostEx "Processing $($reg.Count) registry settings..." -ForegroundColor White
 $reg | ForEach-Object { Set-RegistryValue @_ }
 
+# ---------- Disable MobSync COM object ----------
+Write-HostEx "`n[>] Disabling MobSync COM object..." -ForegroundColor Magenta
+
+$mobsyncPaths = @(
+    "HKCR:\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32",
+    "HKCR:\WOW6432Node\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32"
+)
+
+$disabledPath = "%SystemRoot%\System32\mobsync.exe.Disable"
+
+foreach ($regPath in $mobsyncPaths) {
+    try {
+        Write-HostEx "  [i] Checking MobSync registry path..." -ForegroundColor Cyan
+        if (Test-Path $regPath) {
+            Write-HostEx "  [i] Disabling MobSync COM object..." -ForegroundColor Cyan
+            Set-ItemProperty -Path $regPath -Name "(Default)" -Value $disabledPath -ErrorAction Stop
+            Write-HostEx "  [ OK ] MobSync COM object disabled" -ForegroundColor Green
+        } else {
+            Write-HostEx "  [ SKIP ] MobSync registry path not found" -ForegroundColor Gray
+        }
+    } catch {
+        Write-HostEx "  [ ERROR ] Failed to disable MobSync COM object: $_" -ForegroundColor Red
+    }
+}
+
 # ---------- 2. Create Scheduled Task to enforce AllowTelemetry = 0 ----------
 Write-HostEx "`n[>] STEP 2: Creating scheduled task to enforce AllowTelemetry = 0..." -ForegroundColor Magenta
 
@@ -675,6 +702,8 @@ $tasks = @(
    
    # Diagnostics with data transmission
    '\Microsoft\Windows\Diagnosis\Scheduled',
+
+   'Microsoft\Windows\Work Folders\Work Folders Logon Synchronization',
    
    # Local disk cleanup - not telemetry
    # '\Microsoft\Windows\DiskCleanup\SilentCleanup',
@@ -705,8 +734,8 @@ $tasks = @(
    # Local biometric data cleanup - not telemetry
    # '\Microsoft\Windows\HelloFace\FODCleanupTask',
    
-   # Local language settings sync - not telemetry
-   # '\Microsoft\Windows\International\Synchronize Language Settings',
+   # Local language settings sync
+   '\Microsoft\Windows\International\Synchronize Language Settings',
    
    # Local language components installation - not telemetry
    # '\Microsoft\Windows\LanguageComponentsInstaller\Installation',
@@ -755,8 +784,8 @@ $tasks = @(
    # Local search index maintenance - not telemetry
    # '\Microsoft\Windows\Shell\IndexerAutomaticMaintenance',
    
-   # Local speech model downloads - not telemetry
-   # '\Microsoft\Windows\Speech\SpeechModelDownloadTask',
+   # Local speech model downloads
+   '\Microsoft\Windows\Speech\SpeechModelDownloadTask',
    
    # Local swap file assessment - not telemetry
    # '\Microsoft\Windows\Sysmain\WsSwapAssessmentTask',
@@ -784,6 +813,23 @@ $tasks = @(
 
 Write-HostEx "Processing $($tasks.Count) telemetry-related scheduled tasks..." -ForegroundColor White
 $tasks | ForEach-Object { Disable-ScheduledTaskSafely $_ }
+
+# ---------- Delete CloudExperienceHost registry entries ----------
+Write-HostEx "`n[>] Deleting CloudExperienceHost registry entries..." -ForegroundColor Magenta
+$regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Microsoft\Windows\CloudExperienceHost"
+
+try {
+   Write-HostEx "  [i] Checking registry path..." -ForegroundColor Cyan
+   if (Test-Path $regPath) {
+       Write-HostEx "  [i] Deleting registry entries..." -ForegroundColor Cyan
+       Remove-Item -Path $regPath -Recurse -Force -ErrorAction Stop
+       Write-HostEx "  [ OK ] CloudExperienceHost registry entries deleted" -ForegroundColor Green
+   } else {
+       Write-HostEx "  [ SKIP ] CloudExperienceHost registry entries not found" -ForegroundColor Gray
+   }
+} catch {
+   Write-HostEx "  [ ERROR ] Failed to delete CloudExperienceHost registry entries: $_" -ForegroundColor Red
+}
 
 # ---------- 5. Physically delete CompatTelRunner ----------
 Write-HostEx "`n[>] STEP 5: Physically deleting CompatTelRunner.exe..." -ForegroundColor Magenta
