@@ -352,6 +352,9 @@ $reg = @(
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\Explorer';                           Name='DisableSearchBoxSuggestions';                    Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot';                     Name='TurnOffWindowsCopilot';                          Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot';                     Name='TurnOffWindowsCopilot';                          Value=1},
+        @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
+        @{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
+        @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI';              Name='DisableAIDataAnalysis';                          Value=1},
 
     # --- Setting Sync & IE ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync';                        Name='EnableBackupForWin8Apps';                        Value=0},
