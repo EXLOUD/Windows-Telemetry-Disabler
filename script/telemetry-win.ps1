@@ -290,8 +290,8 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'; Name='TaskEnableRun';                           Value=0},
     
     # --- MobSync ---
-    @{Path='Registry::HKEY_CLASSES_ROOT\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disable'; Type='ExpandString'},
-    @{Path='Registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disable'; Type='ExpandString'},
+    @{Path='Registry::HKEY_CLASSES_ROOT\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disabled'; Type='ExpandString'},
+    @{Path='Registry::HKEY_CLASSES_ROOT\WOW6432Node\CLSID\{1A1F4206-0688-4E7F-BE03-D82EC69DF9A5}\LocalServer32'; Name='(Default)'; Value='%SystemRoot%\System32\mobsync.exe.Disabled'; Type='ExpandString'},
 
     # --- SQMClient ---
     @{Path='HKLM:\SOFTWARE\Microsoft\SQMClient\IE';                                        Name='CEIPEnable';                                     Value=0},
