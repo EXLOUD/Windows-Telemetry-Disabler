@@ -1610,15 +1610,6 @@ Write-Status "  [ OK ] Pagefile set to $targetMB MB" Green
 
 Write-Host "`n[i] All SSD optimizations ended." -ForegroundColor Cyan
 
-# ---------- Epilogue: apply policies ----------
-Write-HostEx "`n[>] Finalizing: forcing Group Policy update..." -ForegroundColor Magenta
-try {
-    Start-Process -FilePath "$env:SystemRoot\System32\gpupdate.exe" -ArgumentList "/force" -Wait -NoNewWindow
-    Write-HostEx "  [ OK ] Group Policy refreshed" -ForegroundColor Green
-} catch {
-    Write-HostEx "  [ WARN ] gpupdate failed: $_" -ForegroundColor Yellow
-}
-
 # ---------- 9. Reserved Storage ----------
 Write-HostEx "`n[>] STEP 10: Disabling Reserved Storage..." -ForegroundColor Magenta
 
@@ -1638,6 +1629,15 @@ try {
    }
 } catch {
    Write-HostEx "  [i] Error disabling Reserved Storage: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# ---------- Epilogue: apply policies ----------
+Write-HostEx "`n[>] Finalizing: forcing Group Policy update..." -ForegroundColor Magenta
+try {
+    Start-Process -FilePath "$env:SystemRoot\System32\gpupdate.exe" -ArgumentList "/force" -Wait -NoNewWindow
+    Write-HostEx "  [ OK ] Group Policy refreshed" -ForegroundColor Green
+} catch {
+    Write-HostEx "  [ WARN ] gpupdate failed: $_" -ForegroundColor Yellow
 }
 
 # ---------- 11. Summary ----------
