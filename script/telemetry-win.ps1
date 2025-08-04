@@ -282,6 +282,10 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant/Analytic'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant'; Name='Enabled'; Value=0},
 
+    # --- Disable widgets ---
+    @{Path='HKCU:\Software\Microsoft\PolicyManager\default\NewsAndInterests\AllowNewsAndInterests';                Name='value';               Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Dsh';                                                                Name='AllowNewsAndInterests'; Value=0},
+
     # --- AppCompatFlags ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Appraiser';  Name='HaveUploadedForTarget';                        Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\AIT';        Name='AITEnable';                                    Value=0},
