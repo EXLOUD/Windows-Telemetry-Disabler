@@ -313,6 +313,9 @@ $reg = @(
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\NetCore';                      Name='Start';                                          Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\RadioMgr';                     Name='Start';                                          Value=0},
 
+    # --- Geolocation Service ---
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc';                                Name='Start';                                        Value=4},
+
     # --- DiagTrack services ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='DiagTrackAuthorization';                       Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='Disabled';                                     Value=1},
@@ -513,8 +516,14 @@ $reg = @(
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters';         Name='RestrictNullSessAccess';                Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Installer';                     Name='AlwaysInstallElevated';                 Value=0},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client';                  Name='AllowBasic';                            Value=0},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\UI';                        Name='DisableWcnUi';                          Value=1},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='EnableRegistrars';                      Value=0},
+
+    # --- Windows Connect Now ---
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\UI';                        Name='DisableWcnUi';                Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableFlashConfigRegistrar'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableInBand802DOT11Registrar'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableUPnPRegistrar';         Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableWPDRegistrar';          Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='EnableRegistrars';             Value=0},
 	
 	# --- Windows Error Reporting ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting';                Name='Disabled';                              Value=1},
@@ -600,6 +609,7 @@ $services = @(
     'DiagTrack',
     'dmwappushservice',
     'PcaSvc',
+    'wisvc',
     'Telemetry',
     'WpcMonSvc',
     'diagnosticshub.standardcollector.service',
