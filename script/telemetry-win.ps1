@@ -1,5 +1,6 @@
-﻿<#
+<#
     Privacy & Telemetry Killer.ps1
+    by EXLOUD aka Vladyslav Bober
 #>
 
 #Requires -RunAsAdministrator
@@ -1060,303 +1061,8 @@ Write-HostEx "`n[>] STEP 6: Disabling unnecessary components..." -ForegroundColo
 
 ) | ForEach-Object { Disable-WindowsFeature $_ }
 
-# ---------- 7.  Remove built-in UWP / APPX (bloatware) ----------
-Write-HostEx "`n[>] STEP 7: Removing built-in UWP / APPX apps..." -ForegroundColor Magenta
-
-$packagesToRemove = @(
-    'Microsoft.BingNews','Microsoft.BingWeather','Microsoft.GetHelp','Microsoft.Getstarted',
-    'Microsoft.MicrosoftOfficeHub','Microsoft.MicrosoftSolitaireCollection','Microsoft.MixedReality.Portal',
-    'Microsoft.People','Microsoft.SkypeApp','Microsoft.Todos','Microsoft.WindowsFeedbackHub',
-    'Microsoft.WindowsMaps','Microsoft.ZuneMusic','Microsoft.ZuneVideo',
-	'Microsoft.YourPhone', 'MicrosoftTeams','Clipchamp.Clipchamp','SpotifyAB.SpotifyMusic',
-    'Microsoft.3DBuilder','Microsoft.549981C3F5F10','Microsoft.Advertising.Xaml',
-    'Microsoft.BingFinance','Microsoft.BingSports','Microsoft.BingTranslator','Microsoft.CommsPhone',
-    'Microsoft.ConnectivityStore','Microsoft.CommunicationsApps','Microsoft.DevicesFlowUserComponent',
-    'Microsoft.FreshPaint','Microsoft.Messaging','Microsoft.Microsoft3DViewer','Microsoft.MicrosoftPowerBIForWindows',
-    'Microsoft.NetworkSpeedTest','Microsoft.Office.OneNote','Microsoft.Office.Sway','Microsoft.OneConnect',
-    'Microsoft.Print3D','Microsoft.RemoteDesktop','Microsoft.MSPaint','Microsoft.MicrosoftStickyNotes',
-    'Microsoft.WindowsReadingList','Microsoft.WindowsSoundRecorder','Microsoft.PowerAutomateDesktop',
-    'Microsoft.OutlookForWindows','Microsoft.Teams','Microsoft.QuickAssist','Microsoft.WindowsNotepad',
-    'Microsoft.WindowsPhone','Microsoft.WindowsMobileExtension', 'Microsoft.WindowsCamera',
-    'king.com.CandyCrushSaga','king.com.CandyCrushFriends','king.com.FarmHeroesSaga','king.com.BubbleWitch3Saga',
-    'Facebook.Facebook','Facebook.InstagramBeta','Twitter.Twitter','TikTok.TikTok','Disney.37853FC22B2CE',
-    'Netflix.Netflix','PandoraMediaInc.29680B314EFC2','Microsoft.BingHealthAndFitness',
-    'Microsoft.BingFood And Drink','Microsoft.BingTravel','Microsoft.GetStarted','Microsoft.Whiteboard',
-    'Microsoft.PowerBI','Microsoft.Cortana','Microsoft.WindowsWebExperience','Microsoft.WidgetsPlatformRuntime',
-    'MicrosoftWindows.Client.WebExperience', 'Lenovo.LenovoCompanion', 'A.E.Networks.SlingTV',
-	'HPInc.HPJumpStart','DellInc.DellCommandUpdate','ASUSTeK.ASUSPCAssistant', 'CaesarsInteractive.CaesarsSlotsFreeCasino',
-    'AcerIncorporated.AcerCare Center','MSIInternational.MSICenter', 'TheNewYorkTimes.NYTCrossword',
-	'AD2F1837.HPAIExperienceCenter', 'AD2F1837.HPConnectedMusic', 'AD2F1837.HPConnectedPhotopoweredbySnapfish',
-	'AD2F1837.HPDesktopSupportUtilities', 'AD2F1837.HPEasyClean', 'AD2F1837.HPFileViewer', 'AD2F1837.HPJumpStarts',
-	'AD2F1837.HPPCHardwareDiagnosticsWindows', 'AD2F1837.HPPowerManager', 'AD2F1837.HPPrinterControl', 
-	'AD2F1837.HPPrivacySettings', 'AD2F1837.HPQuickDrop', 'AD2F1837.HPQuickTouch', 'AD2F1837.HPRegistration', 
-	'AD2F1837.HPSupportAssistant', 'AD2F1837.HPSureShieldAI',
-	'AD2F1837.HPSystemInformation', 'AD2F1837.HPWelcome', 'AD2F1837.HPWorkWell', 'AD2F1837.myHP',
-    'BytedancePte.Ltd.TikTok','C27EB4BA.DropboxOEM','A278AB0D.MarchofEmpires','A278AB0D.DisneyMagicKingdoms',
-    'A278AB0D.DragonManiaLegends','WinZipComputing.WinZipUniversal','2414FC7A.Viber',
-    '41038Axilesoft.ACGMediaPlayer','46928bounde.EclipseManager','4DF9E0F8.Netflix','64885BlueEdge.OneCalendar',
-    '7EE7776C.LinkedInforWindows','828B5831.HiddenCityMysteryofShadows','89006A2E.AutodeskSketchBook',
-    '9E2F88E3.Twitter','ActiproSoftwareLLC.562882FEEB491','AD2F1837.GettingStartedwithWindows8',
-    'AD2F1837.HPJumpStart','AD2F1837.HPRegistration','AdobeSystemsIncorporated.AdobePhotoshopExpress',
-    'Amazon.com.Amazon','CAF9E577.Plex','CyberLinkCorp.hs.PowerMediaPlayer14forHPConsumerPC',
-    'D52A8D61.FarmVille2CountryEscape','D5EA27B7.Duolingo-LearnLanguagesforFree',
-    'DB6EA5DB.CyberLinkMediaSuiteEssentials','DolbyLaboratories.DolbyAccess','Drawboard.DrawboardPDF',
-    'Fitbit.FitbitCoach','flaregamesGmbH.RoyalRevolt2','GAMELOFTSA.Asphalt8Airborne',
-    'KeeperSecurityInc.Keeper','king.com.BubbleWitch3Saga','king.com.CandyCrushFriends',
-    'king.com.CandyCrushSaga','king.com.CandyCrushSodaSaga','Nordcurrent.CookingFever',
-    'PricelinePartnerNetwork.Booking.comBigsavingsonhot','ThumbmunkeysLtd.PhototasticCollage',
-    'XINGAG.XING','613EBCEA.PolarrPhotoEditorAcademicEdition','6Wunderkinder.Wunderlist',
-    'A278AB0D.AsphaltStreetStormRacing', 'Microsoft.Office.Todo.List','Microsoft.Office.Lens'	
-)
-
-$foundPackages = foreach ($pkg in $packagesToRemove) {
-    $app = Get-AppxPackage -Name $pkg -AllUsers -EA SilentlyContinue
-    if ($app) { [pscustomobject]@{ Name = $pkg; Package = $app } }
-}
-
-if ($foundPackages.Count -eq 0) {
-    Write-HostEx "    [SKIP] No bloatware UWP packages found – nothing to remove." -ForegroundColor DarkYellow
-} else {
-    Write-HostEx "    Found bloatware packages:" -ForegroundColor Cyan
-    $foundPackages | ForEach-Object { Write-HostEx "        - $($_.Name)" -ForegroundColor Cyan }
-
-    $key = Read-Host "`nRemove all listed bloatware UWP/APPX packages? [Y/n] (Enter = Yes)"
-    $confirmed = [string]::IsNullOrWhiteSpace($key) -or $key.Trim() -match '^(y|Y| )'
-
-    if (-not $confirmed) {
-        Write-HostEx "    [SKIP] UWP/APPX removal cancelled by user." -ForegroundColor DarkYellow
-    } else {
-        $removedCount = $notFoundCount = $failedCount = 0
-        foreach ($item in $foundPackages) {
-            $pkg  = $item.Name
-            $app  = $item.Package
-            $pf   = [string]$app.PackageFullName
-            $loc  = [string]$app.InstallLocation
-            $fam  = [string]$app.PackageFamilyName
-
-            # API removal
-            $okAppx = $false
-            try { Remove-AppxPackage -Package $pf -AllUsers -EA Stop; $okAppx = $true } catch {}
-
-            $okProv = $false
-            $prov = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -eq $pkg
-            if ($prov) {
-                try { Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -EA Stop; $okProv = $true } catch {}
-            } else { $okProv = $true }
-
-            # Force folder removal
-            $okFolder = Remove-UwpFolderForce -PackageFullName $pf -InstallLocation $loc
-            Remove-AppxRegistryLeftovers -PackageFamilyName $fam
-
-            if ($okFolder) { $removedCount++ } else { $failedCount++ }
-        }
-
-        Write-HostEx "`n[ OK ] UWP/APPX summary: Removed $removedCount, Failed $failedCount" -ForegroundColor Green
-    }
-}
-
-function Remove-UwpFolderForce {
-    param(
-        [Parameter(Mandatory)]
-        [string]$PackageFullName,
-        [string]$InstallLocation
-    )
-
-    $exactPaths = @(
-        $InstallLocation,
-        (Join-Path $env:SystemRoot "WindowsApps\$PackageFullName"),
-        (Join-Path $env:SystemRoot "SystemApps\$PackageFullName")
-    )
-
-	# 2.  WinSxS – recursive search for ANY item that contains the package key
-	$winSxKey   = ($PackageFullName -split '_')[0] -replace '\.', ''
-	$winSxRoot  = Join-Path $env:SystemRoot "WinSxS"
-	$winSxItems = @(Get-ChildItem -Path $winSxRoot -File -Directory -Recurse -ErrorAction SilentlyContinue |
-				  Where-Object { $_.Name -like "*$winSxKey*" } |
-				  Select-Object -ExpandProperty FullName)
-
-    $allTargets = @($exactPaths + $winSxItems) |
-                  Where-Object { $_ -and (Test-Path $_) } |
-                  Sort-Object -Unique
-
-    if (-not $allTargets) {
-        Write-HostEx "  [INFO] No physical folder(s) for $PackageFullName" -ForegroundColor DarkGray
-        return $true
-    }
-
-    $unlocker = Join-Path $PSScriptRoot "tools\Unlocker.exe"
-    if (-not (Test-Path $unlocker)) {
-        Write-HostEx "  [ERROR] tools\Unlocker.exe not found" -ForegroundColor Red
-        return $false
-    }
-
-    $success = $true
-    foreach ($target in $allTargets) {
-        Write-HostEx "  [INFO] Processing: $target" -ForegroundColor Cyan
-
-        # Розблоковуємо
-        try {
-            Start-Process -FilePath $unlocker -ArgumentList "`"$target`"" -Wait -NoNewWindow
-            Start-Sleep -Seconds 2
-        } catch {
-            Write-HostEx "  [WARN] Unlock failed: $_" -ForegroundColor Yellow
-        }
-
-        # Видаляємо
-        try {
-            Start-Process -FilePath $unlocker -ArgumentList "`"$target`"" -Wait -NoNewWindow
-            if (-not (Test-Path $target)) {
-                Write-HostEx "  [ OK ] Removed: $target" -ForegroundColor Green
-                continue
-            }
-        } catch {
-            Write-HostEx "  [ERROR] Cannot remove via Unlocker: $_" -ForegroundColor Red
-        }
-
-        # PowerShell-запасний варіант
-        try {
-            Remove-Item -Path $target -Recurse -Force -ErrorAction Stop
-            Write-HostEx "  [ OK ] Removed (PS fallback): $target" -ForegroundColor Green
-        } catch {
-            Write-HostEx "  [ERROR] Final fallback failed: $_" -ForegroundColor Red
-            $success = $false
-        }
-    }
-
-    return $success
-}
-
-function Remove-AppxRegistryLeftovers {
-    param([string]$PackageFamilyName)
-
-    $roots = @('HKLM:', 'HKCU:')
-    $paths = @(
-        "SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages\$PackageFamilyName",
-        "SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\StateRepository\Cache\Package\$PackageFamilyName",
-        "SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\StateRepository\Cache\PackageFamily\$PackageFamilyName",
-        "SOFTWARE\Microsoft\Windows\CurrentVersion\AppModel\StateRepository\Packages\$PackageFamilyName"
-    )
-    foreach ($root in $roots) {
-        foreach ($p in $paths) {
-            $key = Join-Path $root $p
-            if (Test-Path $key) {
-                try {
-                    Remove-Item -Path $key -Recurse -Force -ErrorAction Stop
-                    Write-HostEx "  [ OK ] Registry cleaned: $key" -ForegroundColor Green
-                } catch {
-                    Write-HostEx "  [WARN] Cannot clean: $key" -ForegroundColor Yellow
-                }
-            }
-        }
-    }
-}
-
-$removedCount = $notFoundCount = $failedCount = 0
-foreach ($pkg in $packagesToRemove) {
-    $app = Get-AppxPackage -Name $pkg -AllUsers -EA SilentlyContinue
-    if (-not $app) { $notFoundCount++; continue }
-
-    $pf   = [string]$app.PackageFullName
-    $loc  = [string]$app.InstallLocation
-    $fam  = [string]$app.PackageFamilyName
-
-    # 1. Try standard removal
-    $okAppx = $false
-    try {
-        Remove-AppxPackage -Package $pf -AllUsers -EA Stop
-        $okAppx = $true
-    } catch {
-        Write-HostEx "  [WARN] Remove-AppxPackage API failed for $pkg" -ForegroundColor Yellow
-    }
-
-    if (-not $okAppx) {
-        Write-HostEx "  [INFO] Will attempt forced folder / registry removal for $pkg" -ForegroundColor Cyan
-    }
-
-    # 2. Try provisioned removal
-    $okProv = $false
-    try {
-        if ($prov) {
-            Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -EA Stop
-        }
-        $okProv = $true
-    } catch {
-        Write-HostEx "  [WARN] Remove-AppxProvisionedPackage API failed for $pkg" -ForegroundColor Yellow
-    }
-
-    if (-not $okProv) {
-        Write-HostEx "  [INFO] Provisioned package removal failed or not found for $pkg" -ForegroundColor Cyan
-    }
-
-    # Skip if standard methods failed
-    # if (-not $okAppx -or -not $okProv) {
-        # Write-HostEx "  [SKIP] Cannot remove via API: $pkg" -ForegroundColor DarkGray
-    # }
-
-    # 3. Remove folder via Unlocker
-    $okFolder = Remove-UwpFolderForce -PackageFullName $pf -InstallLocation $loc
-
-    # 4. Clean registry
-    Remove-AppxRegistryLeftovers -PackageFamilyName $fam
-
-    if ($okFolder) { $removedCount++ } else { $failedCount++ }
-}
-
-# ---------- 7a  STEP-7a – Xbox packages ----------
-$xboxPackages = @(
-    'Microsoft.Xbox.TCUI','Microsoft.XboxApp','Microsoft.XboxGameOverlay',
-    'Microsoft.XboxGamingOverlay','Microsoft.XboxIdentityProvider',
-    'Microsoft.XboxSpeechToTextOverlay','Microsoft.XboxGameCallableUI',
-    'Microsoft.XboxLive','Microsoft.GamingApp'
-)
-
-$xboxFound = foreach ($pkg in $xboxPackages) {
-    $app = Get-AppxPackage -Name $pkg -AllUsers -EA SilentlyContinue
-    if ($app) { [pscustomobject]@{ Name = $pkg; Package = $app } }
-}
-
-if ($xboxFound.Count -eq 0) {
-    Write-HostEx "    [SKIP] No Xbox packages found – nothing to remove." -ForegroundColor DarkYellow
-} else {
-    Write-HostEx "    Found Xbox packages:" -ForegroundColor Cyan
-    $xboxFound | ForEach-Object { Write-HostEx "        - $($_.Name)" -ForegroundColor Cyan }
-
-    $key = Read-Host "`nRemove Xbox packages? [Y/n] (Enter = Yes)"
-    $confirmed = [string]::IsNullOrWhiteSpace($key) -or $key.Trim() -match '^(y|Y| )'
-    if (-not $confirmed) {
-        Write-HostEx "    [SKIP] Xbox removal cancelled." -ForegroundColor DarkYellow
-    } else {
-        $xbRemoved = $xbFailed = 0
-        foreach ($item in $xboxFound) {
-            $pkg  = $item.Name
-            $app  = $item.Package
-            $pf   = [string]$app.PackageFullName
-            $loc  = [string]$app.InstallLocation
-            $fam  = [string]$app.PackageFamilyName
-
-            $okAppx = $false
-            try { Remove-AppxPackage -Package $pf -AllUsers -EA Stop; $okAppx = $true } catch {}
-
-            $okProv = $false
-            $prov = Get-AppxProvisionedPackage -Online | Where-Object DisplayName -eq $pkg
-            if ($prov) {
-                try { Remove-AppxProvisionedPackage -Online -PackageName $prov.PackageName -EA Stop; $okProv = $true } catch {}
-            } else { $okProv = $true }
-
-            # if (-not $okAppx -or -not $okProv) {
-                # Write-HostEx "  [SKIP] Cannot remove Xbox via API: $pkg" -ForegroundColor DarkGray
-            # }
-
-            $okFolder = Remove-UwpFolderForce -PackageFullName $pf -InstallLocation $loc
-            Remove-AppxRegistryLeftovers -PackageFamilyName $fam
-            if ($okFolder) { $xbRemoved++ } else { $xbFailed++ }
-        }
-        Write-HostEx "`n[ OK ] Xbox summary: Removed $xbRemoved, Failed $xbFailed" -ForegroundColor Green
-    }
-}
-
-# ---------- 8. Disable UWP Background Apps ----------
-Write-HostEx "`n[>] STEP 8: Disabling UWP background apps..." -ForegroundColor Magenta
+# ---------- 7. Disable UWP Background Apps ----------
+Write-HostEx "`n[>] STEP 7: Disabling UWP background apps..." -ForegroundColor Magenta
 
 try
 {
@@ -1389,8 +1095,8 @@ catch
     Write-HostEx "  [ ERROR ] Error disabling UWP background apps: $_" -ForegroundColor Red
 }
 
-# ---------- 9. Optimize Windows for SSD ----------
-Write-Host "`n[>] Step 9 : Optimize Windows for SSD..." -ForegroundColor Magenta
+# ---------- 8. Optimize Windows for SSD ----------
+Write-Host "`n[>] Step 8 : Optimize Windows for SSD..." -ForegroundColor Magenta
 
 $bootDrive = (Get-CimInstance Win32_OperatingSystem).SystemDrive   # C:
 $diskIndex = (Get-Partition | Where-Object { $_.DriveLetter -eq $bootDrive.Trim(':') }).DiskNumber
@@ -1614,7 +1320,7 @@ Write-Status "  [ OK ] Pagefile set to $targetMB MB" Green
 Write-Host "`n[i] All SSD optimizations ended." -ForegroundColor Cyan
 
 # ---------- 9. Reserved Storage ----------
-Write-HostEx "`n[>] STEP 10: Disabling Reserved Storage..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 9: Disabling Reserved Storage..." -ForegroundColor Magenta
 
 try {
    $reservedStorageState = Get-WindowsReservedStorageState -ErrorAction SilentlyContinue
@@ -1672,11 +1378,6 @@ Write-HostEx ("  Files/Keys:   {0} removed,   {1} not found, {2} failed" -f
               $script:Stats.ItemsRemoved,
               $script:Stats.ItemsNotFound,
               $script:Stats.ItemsFailed) -ForegroundColor White
-
-Write-HostEx ("  UWP/APPX:     {0} removed,   {1} not found, {2} failed" -f
-              $removedCount,
-              $notFoundCount,
-              $failedCount) -ForegroundColor White
 
 Write-HostEx "`n[ OK ] All privacy settings have been applied!" -ForegroundColor Green
 Write-HostEx "[ ! ] Please restart your computer to apply all changes." -ForegroundColor Yellow
