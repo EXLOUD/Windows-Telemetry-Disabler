@@ -1,12 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-
 :: 0. Перехід у каталог, звідки запущено .bat
 cd /D "%~dp0"
-
 :: 1. Заголовок вікна
 title Windows Telemetry Disabler
-
 :: 2. Перевірка наявності PowerShell 5
 set "PS5_PATH=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 set "PS_EXE="
@@ -20,30 +17,39 @@ pause
 exit /b 1
 :psFound
 echo [INFO] Using %PS_VERSION%
-
-:: 3. Визначення архітектури CPU
+:: 3. Визначення архітектури CPU та назви файлу superUser
 set "ARCH="
-if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64"        set "ARCH=x64"
-if /i "%PROCESSOR_ARCHITECTURE%"=="x86" (
-    if /i "%PROCESSOR_ARCHITEW6432%"=="AMD64"    set "ARCH=x64"
-    if not defined ARCH                          set "ARCH=win32"
+set "SUPERUSER_FILE="
+if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+    set "ARCH=x64"
+    set "SUPERUSER_FILE=superUser64.exe"
 )
-if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64"        set "ARCH=arm64"
+if /i "%PROCESSOR_ARCHITECTURE%"=="x86" (
+    if /i "%PROCESSOR_ARCHITEW6432%"=="AMD64" (
+        set "ARCH=x64"
+        set "SUPERUSER_FILE=superUser64.exe"
+    ) else (
+        set "ARCH=win32"
+        set "SUPERUSER_FILE=superUser32.exe"
+    )
+)
+if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    set "ARCH=arm64"
+    set "SUPERUSER_FILE=superUserA64.exe"
+)
 if not defined ARCH (
     echo [ERROR] Unsupported CPU architecture ^(%PROCESSOR_ARCHITECTURE%^).
     pause
     exit /b 1
 )
-
 :: 4. Формування повних шляхів
-set "NSUDO_DIR=%~dp0script\Tools\NSudo"
-set "NSUDO=%NSUDO_DIR%\%ARCH%\NSudoLG.exe"
+set "SUPERUSER_DIR=%~dp0script\Tools\%ARCH%"
+set "SUPERUSER=%SUPERUSER_DIR%\%SUPERUSER_FILE%"
 set "PS_SCRIPT=%~dp0script\telemetry-win.ps1"
-
-:: 5. Перевірка наявності NSudo та скрипта
-if not exist "%NSUDO%" (
-    echo [ERROR] NSudoLG.exe not found for %ARCH%:
-    echo           %NSUDO%
+:: 5. Перевірка наявності superUser та скрипта
+if not exist "%SUPERUSER%" (
+    echo [ERROR] %SUPERUSER_FILE% not found for %ARCH%:
+    echo           %SUPERUSER%
     pause
     exit /b 1
 )
@@ -52,11 +58,10 @@ if not exist "%PS_SCRIPT%" (
     pause
     exit /b 1
 )
-
 :: 6. Запуск
 cls
 echo.
-echo [INFO] Detected %ARCH%, launching via NSudo (TrustedInstaller)...
+echo [INFO] Detected %ARCH%, launching via superUser (TrustedInstaller)...
 echo.
 echo =========================================================
 echo           Windows Telemetry Disabler Launcher
@@ -65,10 +70,7 @@ echo                  by EXLOUD aka BOBER
 echo               https://github.com/EXLOUD
 echo =========================================================
 echo.
-
 cd /d "%~dp0script"
-
-"%NSUDO%" -U:T -P:E -ShowWindowMode:Show "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
-
+"%SUPERUSER%" /ws "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
 pause
 exit /b 0
