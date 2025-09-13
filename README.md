@@ -3,8 +3,8 @@
 ### 👇
 
   <p>
-    <a href="https://github.com/EXLOUD/windows-telemetry-disabler/archive/refs/heads/main.zip">
-      <img src="https://img.shields.io/badge/_>_Download_This_Script_<_-darkgreen?style=for-the-badge">
+    <a href="https://github.com/EXLOUD/windows-telemetry-disabler/archive/refs/heads/main.zip  ">
+      <img src="https://img.shields.io/badge/_  >_Download_This_Script_<_-darkgreen?style=for-the-badge">
     </a>
   </p>
 
@@ -24,19 +24,19 @@
   <h1>Windows Telemetry Disabler</h1>
   
   <p>
-    <a href="https://docs.microsoft.com/en-us/windows/privacy/">
+    <a href="https://docs.microsoft.com/en-us/windows/privacy/  ">
       <img src="https://img.shields.io/badge/Windows_Privacy-0078D4?style=for-the-badge" alt="Windows Privacy">
     </a>
   </p>
   
   <img src="assets/preview.gif" width="600" alt="Windows Telemetry Disabler demo preview">
   
-  [![GitHub issues](https://img.shields.io/github/issues/EXLOUD/windows-telemetry-disabler?style=flat-square)](https://github.com/EXLOUD/windows-telemetry-disabler/issues)
+  [![GitHub issues](  https://img.shields.io/github/issues/EXLOUD/windows-telemetry-disabler?style=flat-square)](  https://github.com/EXLOUD/windows-telemetry-disabler/issues  )
   ![PowerShell](https://custom-icon-badges.demolab.com/badge/PowerShell-5.0-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
-  ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows&logoColor=white)
-  ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-  ![Architecture](https://custom-icon-badges.demolab.com/badge/Architecture-x86%20%7C%20x64%20%7C%20ARM64-blue?style=for-the-badge&logo=cpu&logoColor=white)
-  [![GitHub stars](https://img.shields.io/github/stars/EXLOUD/windows-telemetry-disabler?style=flat-square)](https://github.com/EXLOUD/windows-telemetry-disabler/stargazers)
+  ![Windows](  https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows&logoColor=white)
+  ![License](  https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+  ![Architecture](  https://custom-icon-badges.demolab.com/badge/Architecture-x86%20%7C%20x64%20%7C%20ARM64-blue?style=for-the-badge&logo=cpu&logoColor=white)
+  [![GitHub stars](  https://img.shields.io/github/stars/EXLOUD/windows-telemetry-disabler?style=flat-square)](  https://github.com/EXLOUD/windows-telemetry-disabler/stargazers  )
 
   A powerful script to disable telemetry and data collection in Windows operating system. This tool runs with TrustedInstaller privileges for maximum effectiveness and supports all modern Windows architectures.
 
@@ -47,7 +47,7 @@
 # Windows Telemetry Disabler
 
 **Author:** EXLOUD  
-**GitHub:** https://github.com/EXLOUD
+**GitHub:** https://github.com/EXLOUD  
 
 A script to disable telemetry and data collection in Windows operating system.
 
@@ -62,40 +62,34 @@ This tool allows you to disable various Windows telemetry services that collect 
 - **Architecture:** x64, x86 (win32), ARM64
 - **Privileges:** Run as Administrator
 
-## 🛠️ Third-Party Tools Used
+## 🛠️ Privilege Elevation Tool
 
-This script currently utilizes several third-party proprietary utilities for execution (custom alternatives are in development):
+This script utilizes a custom privilege escalation utility (`superUser*.exe`) to execute PowerShell commands with **TrustedInstaller-level permissions**, ensuring deep system-level changes can be applied reliably.
 
-  <p align="center">
-    <a href="https://github.com/M2Team/NSudo">
-      <img src="https://img.shields.io/badge/NSudo-by_M2Team-blue?style=for-the-badge&logo=github&logoColor=white" alt="NSudo">
-    </a>
-    <a href="https://github.com/eject37">
-      <img src="https://img.shields.io/badge/Unlocker-by_Eject37-orange?style=for-the-badge&logo=github&logoColor=white" alt="Unlocker by Eject37">
-    </a>
-  </p>
+> **Note:** The `superUser` binaries included in this release are pre-compiled third-party utilities used temporarily for privilege escalation. Custom open-source alternatives are under development.
 
-- **NSudo** - Provides TrustedInstaller privileges for system-level modifications
-- **Unlocker** - Based on IObitUnlocker by IObit company, modified by Eject37 for file unlocking and deletion
-
-> **Note:** These proprietary utilities are used temporarily while custom alternatives are being developed.
+<p align="center">
+  <a href="https://github.com/mspaintmsi/superUser">
+    <img src="https://img.shields.io/badge/superUser-by_mspaintmsi-blue?style=for-the-badge&logo=github&logoColor=white" alt="superUser by mspaintmsi">
+  </a>
+</p>
 
 ## 📁 Project Structure
 
 ```
-├── assets
-├── launcher.bat              # Main launcher
-├── script/
-│   ├── telemetry-win.ps1    # Main PowerShell script
-│   └── Tools/
-│       ├── NSudo/
-│       │   ├── x64/
-│       │   ├── win32/
-│       │   └── arm64/
-│       │       └── NSudoLG.exe
-│       └── Unlocker.exe      # Utility for unlocking and deleting files
-├── README.md
-└── README-UK.md
+📂 assets  
+📄 launcher.bat           # Main launcher  
+📂 script/  
+│   📄 telemetry-win.ps1  # Main PowerShell script  
+│   📂 Tools/  
+│       📂 x64/  
+│       │   📄 superUser64.exe  
+│       📂 win32/  
+│       │   📄 superUser32.exe  
+│       📂 arm64/  
+│           📄 superUserA64.exe  
+📄 README.md  
+📄 README-UK.md  
 ```
 
 ## 🚀 Installation and Usage
@@ -117,7 +111,7 @@ The launcher performs the following actions:
 
 1. **Checks for PowerShell 5 availability**
 2. **Detects CPU architecture** (x64/x86/ARM64)
-3. **Locates appropriate NSudo version**
+3. **Locates appropriate `superUser` version**
 4. **Launches PowerShell script** with TrustedInstaller privileges
 5. **Applies configurations** to disable telemetry
 
@@ -131,6 +125,11 @@ The script may disable/configure:
 - Advertising identifiers
 - Automatic telemetry updates
 - Various scheduled tasks
+- UWP background apps
+- Reserved Storage
+- DiagTrack logs
+- CompatTelRunner.exe
+- And more (see script for full list)
 
 *For detailed list of changes, see `telemetry-win.ps1`*
 
@@ -155,8 +154,8 @@ If you need to restore default settings:
 - Ensure PowerShell is installed
 - Check path: `%SystemRoot%\System32\WindowsPowerShell\v1.0\`
 
-### Error "NSudoLG.exe not found"
-- Verify NSudo files exist in `script/Tools/NSudo/` folder
+### Error "superUser*.exe not found"
+- Verify `superUser` files exist in `script/Tools/` subfolders
 - Ensure folder structure is preserved
 
 ### Error "Unsupported CPU architecture"
@@ -166,13 +165,12 @@ If you need to restore default settings:
 ## 📞 Support
 
 - **GitHub Issues:** Create an issue in the repository
-- **GitHub:** https://github.com/EXLOUD
+- **GitHub:**   https://github.com/EXLOUD  
 
 ## 📄 License
 
 This project is licensed under the **MIT License**.
 
-```
 MIT License
 
 Copyright (c) 2025 EXLOUD
@@ -194,7 +192,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
 
 ---
 
