@@ -1,4 +1,4 @@
-<#
+﻿<#
     Privacy & Telemetry Killer.ps1
     by EXLOUD aka Vladyslav Bober
 #>
