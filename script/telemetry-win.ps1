@@ -1,8 +1,3 @@
-﻿<#
-    Privacy & Telemetry Killer.ps1
-    by EXLOUD aka Vladyslav Bober
-#>
-
 #Requires -RunAsAdministrator
 [CmdletBinding()] param()
 
@@ -217,9 +212,19 @@ function Remove-ItemSafely
 
 # ====================  MAIN  ====================
 
-Write-HostEx ("`n" + "="*55) -ForegroundColor Cyan
-Write-HostEx "              PRIVACY & TELEMETRY KILLER" -ForegroundColor Cyan
-Write-HostEx ("="*55) -ForegroundColor Cyan
+Write-HostEx ("`n" + "="*60) -ForegroundColor Cyan
+Write-HostEx " "
+Write-HostEx " EEEEEEE  XX    XX  LL        000000    UU     UU  DDDDDD  " -ForegroundColor Cyan
+Write-HostEx " EE        XX  XX   LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
+Write-HostEx " EEEEE      XXXX    LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
+Write-HostEx " EE        XX  XX   LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
+Write-HostEx " EEEEEEE  XX    XX  LLLLLLL   000000     UUUUuUU   DDDDDD  " -ForegroundColor Cyan
+Write-HostEx " "
+Write-HostEx "                         PRESENTS" -ForegroundColor Cyan
+Write-HostEx " "
+Write-HostEx "                PRIVACY & TELEMETRY KILLER" -ForegroundColor Cyan
+Write-HostEx " "
+Write-HostEx ("="*60) -ForegroundColor Cyan
 
 # ---------- 1. Registry ----------
 Write-HostEx "`n[>] STEP 1: Applying registry policies..." -ForegroundColor Magenta
@@ -268,10 +273,15 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing\SCM\Regular'; Name='TracingDisabled'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\MSDeploy\3'; Name='EnableTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
-	
-	# --- SPP Config ---
-	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
-	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
+
+    # --- Experimentation on user sys ---
+    @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\System'; Name='AllowExperimentation'; Value=0},
+     
+    # --- CDPUserSvc block this curiosity service if y not use Timeline, Virtual Desktops, Your Phone app, Night Light --- 
+    # @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\CDPUserSvc'; Name='Start'; Value=4},
+
+    # --- Where y down file ---
+    @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments'; Name='SaveZoneInformation'; Value=1},
 	
 	# --- EventLog Config ---
 	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
@@ -360,9 +370,9 @@ $reg = @(
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\Explorer';                           Name='DisableSearchBoxSuggestions';                    Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot';                     Name='TurnOffWindowsCopilot';                          Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot';                     Name='TurnOffWindowsCopilot';                          Value=1},
-        @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
-        @{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
-        @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI';              Name='DisableAIDataAnalysis';                          Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
+    @{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\WindowsAI';                          Name='DisableAIDataAnalysis';                          Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\WindowsAI';              Name='DisableAIDataAnalysis';                          Value=1},
 
     # --- Setting Sync & IE ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync';                        Name='EnableBackupForWin8Apps';                        Value=0},
@@ -386,6 +396,7 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\TextInput';           Name='AllowLinguisticDataCollection';                  Value=0},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\TabletPC';                           Name='PreventHandwritingDataSharing';                  Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports';            Name='PreventHandwritingErrorReports';                 Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Speech';                                     Name='AllowSpeechModelUpdate';                         Value=0},
 	@{Path='HKCU:\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy';         Name='HasAccepted';                                    Value=0},
 
     # --- CompactTelR. Block run ---
@@ -623,6 +634,7 @@ $services = @(
     'wisvc',
     'Telemetry',
     'WpcMonSvc',
+    # 'CDPUserSvc',
     'diagnosticshub.standardcollector.service',
     'WMPNetworkSvc'
 )
@@ -651,7 +663,7 @@ $services | ForEach-Object {
     }
 }
 
-Write-HostEx "`n[>] STEP 2b: Handling NDU service ..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 3b: Handling NDU service ..." -ForegroundColor Magenta
 try {
     $svc = Get-Service -Name 'ndu' -ErrorAction Stop
     Write-HostEx "  [i] Ndu status: $($svc.Status), start type: $($svc.StartType)" -ForegroundColor Cyan
@@ -676,7 +688,7 @@ try {
 }
 
 # ---------- 3. Scheduled Tasks ----------
-Write-HostEx "`n[>] STEP 3: Disabling scheduled tasks..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 4: Disabling scheduled tasks..." -ForegroundColor Magenta
 $tasks = @(
    # Local .NET compilation - not telemetry
    # '\Microsoft\Windows\.NET Framework\.NET Framework NGEN v4.0.30319',
@@ -862,7 +874,7 @@ if (Test-Path $compatPath) {
 }
 
 # ---------- 5. Clean DiagTrack Logs ----------
-Write-HostEx "`n[>] STEP 5: Cleaning DiagTrack logs..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 6: Cleaning DiagTrack logs..." -ForegroundColor Magenta
 $diagPath = "$env:ProgramData\Microsoft\Diagnosis"
 $icacls   = "$env:SystemRoot\System32\icacls.exe"
 $takeown  = "$env:SystemRoot\System32\takeown.exe"
@@ -914,7 +926,7 @@ else {
 Write-HostEx "  [ OK ] Diagnosis folder processed" -ForegroundColor Green
 
 # ---------- 6. Optional Windows Features ----------
-Write-HostEx "`n[>] STEP 6: Disabling unnecessary components..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 7: Disabling unnecessary components..." -ForegroundColor Magenta
 @(
   # === Critical Security Risk Components - SMB1 and Legacy Protocols ===
   # 'SMB1Protocol',
@@ -1062,16 +1074,14 @@ Write-HostEx "`n[>] STEP 6: Disabling unnecessary components..." -ForegroundColo
 ) | ForEach-Object { Disable-WindowsFeature $_ }
 
 # ---------- 7. Disable UWP Background Apps ----------
-Write-HostEx "`n[>] STEP 7: Disabling UWP background apps..." -ForegroundColor Magenta
-
+Write-HostEx "`n[>] STEP 8: Disabling UWP background apps..." -ForegroundColor Magenta
 try
 {
     $appPrivacyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy"
-    $policyName     = "LetAppsRunInBackground"
-
-    $currentValue = Get-ItemProperty -Path $appPrivacyPath -Name $policyName -ErrorAction SilentlyContinue | 
-                    Select-Object -ExpandProperty $policyName -ErrorAction SilentlyContinue
-
+    
+    $currentValue = Get-ItemProperty -Path $appPrivacyPath -Name "LetAppsRunInBackground" -ErrorAction SilentlyContinue | 
+                    Select-Object -ExpandProperty "LetAppsRunInBackground" -ErrorAction SilentlyContinue
+    
     if ($currentValue -eq 2)
     {
         Write-HostEx "  [ SKIP ] UWP background apps already disabled via Group Policy" -ForegroundColor Gray
@@ -1079,14 +1089,12 @@ try
     else
     {
         Write-HostEx "  [i] Disabling UWP background apps..." -ForegroundColor Yellow
-
         if (-not (Test-Path $appPrivacyPath))
         {
             New-Item -Path $appPrivacyPath -Force | Out-Null
             Write-HostEx "  [+] Creating key: $appPrivacyPath" -ForegroundColor Yellow
         }
-
-        Set-ItemProperty -Path $appPrivacyPath -Name $policyName -Type DWord -Value 2
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy" -Name "LetAppsRunInBackground" -Type DWord -Value 2
         Write-HostEx "  [ OK ] UWP background apps disabled via Group Policy" -ForegroundColor Green
     }
 }
@@ -1096,7 +1104,7 @@ catch
 }
 
 # ---------- 8. Optimize Windows for SSD ----------
-Write-Host "`n[>] Step 8 : Optimize Windows for SSD..." -ForegroundColor Magenta
+Write-Host "`n[>] Step 9 : Optimize Windows for SSD..." -ForegroundColor Magenta
 
 $bootDrive = (Get-CimInstance Win32_OperatingSystem).SystemDrive   # C:
 $diskIndex = (Get-Partition | Where-Object { $_.DriveLetter -eq $bootDrive.Trim(':') }).DiskNumber
@@ -1320,7 +1328,7 @@ Write-Status "  [ OK ] Pagefile set to $targetMB MB" Green
 Write-Host "`n[i] All SSD optimizations ended." -ForegroundColor Cyan
 
 # ---------- 9. Reserved Storage ----------
-Write-HostEx "`n[>] STEP 9: Disabling Reserved Storage..." -ForegroundColor Magenta
+Write-HostEx "`n[>] STEP 10: Disabling Reserved Storage..." -ForegroundColor Magenta
 
 try {
    $reservedStorageState = Get-WindowsReservedStorageState -ErrorAction SilentlyContinue
