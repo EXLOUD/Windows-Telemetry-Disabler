@@ -72,5 +72,4 @@ echo =========================================================
 echo.
 cd /d "%~dp0script"
 "%SUPERUSER%" /ws "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS_SCRIPT%"
-pause
 exit /b 0
