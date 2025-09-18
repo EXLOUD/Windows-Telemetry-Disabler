@@ -22,9 +22,10 @@ function Write-HostEx {
 }
 # endregion
 
-# Statistics
+# region --- Statistics ----------------------------------------------
 $script:Stats = @{
     RegistryApplied   = 0
+    RegistryDeleted   = 0
     RegistrySkipped   = 0
     RegistryFailed    = 0
     ServicesDisabled  = 0
@@ -103,6 +104,29 @@ function Set-RegistryValue {
     }
 }
 
+function Remove-RegistryKeySafely {
+    [CmdletBinding(SupportsShouldProcess)]
+    param (
+        [Parameter(Mandatory)][string]$Path
+    )
+    try {
+        if (!(Test-Path $Path)) {
+            Write-HostEx "  [ SKIP ] Key not found: $Path" -ForegroundColor Gray
+            $script:Stats.RegistrySkipped++
+            return
+        }
+        if ($PSCmdlet.ShouldProcess($Path, 'Remove registry key')) {
+            Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
+            Write-HostEx "  [ OK ] Deleted key: $Path" -ForegroundColor Green
+            $script:Stats.RegistryDeleted++
+        }
+    }
+    catch {
+        Write-HostEx "  [ ERROR ] Error deleting key $Path`: $_" -ForegroundColor Red
+        $script:Stats.RegistryFailed++
+    }
+}
+
 function Disable-ScheduledTaskSafely {
     param([string]$TaskPath)
     try {
@@ -166,7 +190,7 @@ Write-HostEx "  EEEEEEE   XX    XX   LLLLLLL   000000      UUUUuUU    DDDDDD  " 
 Write-HostEx " "
 Write-HostEx "                            PRESENTS" -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.2" -ForegroundColor Cyan
+Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.3" -ForegroundColor Cyan
 Write-HostEx " "
 Write-HostEx ("="*66) -ForegroundColor Cyan
 
@@ -215,6 +239,14 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing\SCM\Regular'; Name='TracingDisabled'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\MSDeploy\3'; Name='EnableTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
+
+    # --- SPP Config ---
+	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
+	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
+
+    # --- Disable Delivery Optimization (Peer-to-Peer updates) ---
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config'; Name='DODownloadMode'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization';           Name='DODownloadMode'; Value=0},
 
     # --- IWA ---
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings';      Name='EnableNegotiate'; Value=0},
@@ -326,6 +358,8 @@ $reg = @(
 
     # --- Setting Sync & IE ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync';                        Name='EnableBackupForWin8Apps';                        Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync';                        Name='DisableSettingSync';                             Value=2},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\SettingSync';                        Name='DisableSettingSyncUserOverride';                 Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Safety\PrivacIE';          Name='DisableLogging';                                 Value=1},
 	
 	# --- Wi-Fi Sense ---
@@ -337,6 +371,7 @@ $reg = @(
     # --- Input / Handwriting / Speech telemetry ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitInkCollection';                  Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitTextCollection';                 Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='AllowInputPersonalization';                      Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore';               Name='HarvestContacts';                                Value=0},
     @{Path='HKCU:\Software\Microsoft\Personalization\Settings';                            Name='AcceptedPrivacyPolicy';                          Value=0},	
 	@{Path='HKCU:\Software\Microsoft\Input';                                               Name='IsInputAppPreloadEnabled';                       Value=0},
@@ -352,7 +387,7 @@ $reg = @(
     # --- CompactTelR. Block run ---
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\CompatTelRunner.exe'; Name='Debugger'; Value='%windir%\System32\taskkill.exe'; Type='String'},
 	
-	# --- Feedback OFF ---
+	# --- Feedback OFF (HEIP) ---
 	@{Path='HKCU:\Software\Policies\Microsoft\Assistance\Client\1.0'; Name='NoExplicitFeedback'; Value=1;},
     @{Path='HKCU:\Software\Policies\Microsoft\Assistance\Client\1.0'; Name='NoImplicitFeedback'; Value=1;},
 	@{Path='HKLM:\Software\Policies\Microsoft\Assistance\Client\1.0'; Name='NoExplicitFeedback'; Value=1;},
@@ -363,6 +398,7 @@ $reg = @(
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo';                    Name='DisabledByGroupPolicy';                          Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
+    @{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\AdvertisingInfo';  Name='Enabled';                                        Value=0},
     @{Path='HKCU:\Control Panel\International\User Profile';                               Name='HttpAcceptLanguageOptOut';                       Value=1},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='Start_TrackProgs';                               Value=0},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContent-338393Enabled';                Value=0},
@@ -380,6 +416,8 @@ $reg = @(
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContent-338389Enabled';                  Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContent-353698Enabled';                  Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SystemPaneSuggestionsEnabled';                     Value=0},
+    @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SoftLandingEnabled';                               Value=0},
+    @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContentEnabled';                         Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Privacy';                      Name='TailoredExperiencesWithDiagnosticDataEnabled';     Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Siuf\Rules';                                          Name='NumberOfSIUFInPeriod';                             Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Siuf\Rules';                                          Name='PeriodInNanoSeconds';                              Value=0},
@@ -429,6 +467,7 @@ $reg = @(
    
     # --- PerfTrack ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\PerfTrack'; Name='Disabled'; Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'; Name='ScenarioExecutionEnabled'; Value=0},
 	
 	# --- UserProfileEngagement ---
 	@{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\UserProfileEngagement'; Name = 'ScoobeSystemSettingEnabled'; Value = 0 },
@@ -540,9 +579,18 @@ $reg = @(
 Write-HostEx "Processing $($reg.Count) registry settings..." -ForegroundColor White
 $reg | ForEach-Object { Set-RegistryValue @_ }
 
+# ---------- Registry Keys to DELETE ----------
+Write-HostEx "`n[>] Deleting unwanted registry keys..." -ForegroundColor Magenta
+$regDel = @(
+    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\Subscriptions',
+    'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SuggestedApps'
+)
+Write-HostEx "Processing $($regDel.Count) registry keys for deletion..." -ForegroundColor White
+$regDel | ForEach-Object { Remove-RegistryKeySafely $_ }
+
 # ---------- 2. Create Scheduled Task to enforce critical telemetry registry keys ----------
 Write-HostEx "`n[>] STEP 2: Creating scheduled task to enforce critical telemetry registry keys..." -ForegroundColor Magenta
-$taskName = "AllowTelemetryZero"
+$taskName = "TelemetryOFF"
 $scriptPath = "$env:ProgramData\Scripts\Fix-Telemetry.ps1"
 
 $null = New-Item -Path (Split-Path $scriptPath) -ItemType Directory -Force
@@ -645,8 +693,9 @@ $services = @(
     'wisvc',
     'Telemetry',
     'WpcMonSvc',
+    'UnistoreSvc', # --- Turn off email, contacts, calendar and personal data syncing ---
 
-    # --- CDPUserSvc block this curiosity service if y not use Night Light , Virtual Desktops Timeline, Your Phone app --- 
+    # --- Disable/uncomment CDPUserSvc if you don't use Night Light, Virtual Desktops, Timeline, or the Your Phone app. --- 
     # 'CDPUserSvc',
     
     'diagnosticshub.standardcollector.service',
@@ -726,6 +775,10 @@ $tasks = @(
    '\Microsoft\Windows\Customer Experience Improvement Program\Consolidator',
    '\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipTask',
    '\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip',
+   '\Microsoft\Windows\Customer Experience Improvement Program\BthSQM',
+
+   # --- Cloud Experience Host (Advertising & Telemetry) ---
+   '\Microsoft\Windows\CloudExperienceHost\CreateObjectTask',
    
    # Device information collection
    '\Microsoft\Windows\Device Information\Device',
@@ -836,7 +889,14 @@ $tasks = @(
    # '\MicrosoftEdgeUpdateTaskMachineCore',
    # '\MicrosoftEdgeUpdateTaskMachineUA',
    
-      # Error reports transmission
+   # --- License-related tasks ---
+   #'\Microsoft\Windows\License Manager\TempSignedLicenseExchange',
+   #'\Microsoft\Windows\Clip\License Validation',
+   # --- Subscription & License Acquisition ---
+   #'\Microsoft\Windows\Subscription\EnableLicenseAcquisition',
+   #'\Microsoft\Windows\Subscription\LicenseAcquisition',
+
+   # Error reports transmission
    '\Microsoft\Windows\Windows Error Reporting\QueueReporting'
    
 ) | Sort-Object -Unique
@@ -981,6 +1041,8 @@ if ($choice -eq 'Y' -or $choice -eq 'y') {
       'MSMQ-HTTP',
       'MSMQ-Multicast',
       'MSMQ-DCOMProxy',
+      # === Windows Recall Feature (Privacy Risk) ===
+      'Recall',
       # === Print and Document Services ===
       # 'Printing-PrintToPDFServices-Features',
       # 'Printing-XPSServices-Features',
@@ -1356,6 +1418,13 @@ try {
    Write-HostEx "  [i] Error disabling Reserved Storage: $($_.Exception.Message)" -ForegroundColor Red
 }
 
+Write-HostEx "  [i] Applying registry hardening to prevent re-enable..." -ForegroundColor Cyan
+@(
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MiscPolicyInfo'; Name='ShippedWithReserves'; Value=2},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PassedPolicy';   Name='ShippedWithReserves'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\ReserveManager'; Name='ShippedWithReserves'; Value=0}
+) | ForEach-Object { Set-RegistryValue @_ }
+
 # ---------- Epilogue: apply policies ----------
 Write-HostEx "`n[>] Finalizing: forcing Group Policy update..." -ForegroundColor Magenta
 try {
@@ -1370,8 +1439,9 @@ Write-HostEx ("`n" + ("=" * 53)) -ForegroundColor Cyan
 Write-HostEx "                   EXECUTION REPORT" -ForegroundColor Cyan
 Write-HostEx ("=" * 53) -ForegroundColor Cyan
 
-Write-HostEx ("  Registry:     {0} applied,   {1} skipped,   {2} failed" -f
+Write-HostEx ("  Registry:     {0} applied, {1} deleted, {2} skipped, {3} failed" -f
               $script:Stats.RegistryApplied,
+              $script:Stats.RegistryDeleted,
               $script:Stats.RegistrySkipped,
               $script:Stats.RegistryFailed) -ForegroundColor White
 
