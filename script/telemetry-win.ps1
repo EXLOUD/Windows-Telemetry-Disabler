@@ -40,6 +40,17 @@ $script:Stats = @{
     ItemsNotFound     = 0
     ItemsFailed       = 0
 }
+# endregion
+
+# region --- System Utilities Paths ------------------------------------------
+$SYS32      = "$env:SystemRoot\System32"
+$takeown    = "$SYS32\takeown.exe"
+$icacls     = "$SYS32\icacls.exe"
+$FSUTIL     = "$SYS32\fsutil.exe"
+$POWERCFG   = "$SYS32\powercfg.exe"
+$SC         = "$SYS32\sc.exe"
+$WEVTUTIL   = "$SYS32\wevtutil.exe"
+# endregion
 
 function Set-RegistryValue {
     [CmdletBinding(SupportsShouldProcess)]
@@ -89,38 +100,6 @@ function Set-RegistryValue {
     catch {
         Write-HostEx "  [ ERROR ] Error setting $Name`: $_" -ForegroundColor Red
         $script:Stats.RegistryFailed++
-    }
-}
-
-function Disable-ServiceSafely {
-    param([string]$ServiceName)
-    try {
-        $svc = Get-Service $ServiceName -ErrorAction Stop
-
-        if ($svc.Status -eq 'Running') {
-            Write-HostEx "  [i] Stopping service: $ServiceName" -ForegroundColor Yellow
-            Stop-Service $ServiceName -Force -ErrorAction Stop
-        }
-
-        if ($svc.StartType -ne 'Disabled') {
-            Write-HostEx "  [ OK ] Disabling service: $ServiceName" -ForegroundColor Green
-            Set-Service $ServiceName -StartupType Disabled
-            $script:Stats.ServicesDisabled++
-        } else {
-            Write-HostEx "  [ SKIP ] Service already disabled: $ServiceName" -ForegroundColor Gray
-        }
-
-        sc.exe delete $ServiceName 2>&1 | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-            Write-HostEx "  [ OK ] Service deleted: $ServiceName" -ForegroundColor Green
-        } else {
-            Write-HostEx "  [i] Service marked for deletion: $ServiceName" -ForegroundColor Cyan
-        }
-    } catch [Microsoft.PowerShell.Commands.ServiceCommandException] {
-        Write-HostEx "  [i] Service not found: $ServiceName" -ForegroundColor DarkYellow
-        $script:Stats.ServicesNotFound++
-    } catch {
-        Write-HostEx "  [ ERROR ] Error with service $ServiceName`: $_" -ForegroundColor Red
     }
 }
 
@@ -175,56 +154,21 @@ function Disable-WindowsFeature {
     }
 }
 
-function Remove-ItemSafely
-{
-	[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
-	param (
-		[Parameter(Mandatory, Position = 0)]
-		[string]$Path,
-		[Parameter(Position = 1)]
-		[string]$Description = ""
-	)
-	
-	if (-not (Test-Path $Path))
-	{
-		Write-HostEx "  [i] Not found: $Description ($Path)" -ForegroundColor DarkYellow
-		$script:Stats.ItemsNotFound++
-		return
-	}
-	
-	$action = "Remove item(s)"
-	if ($Description) { $action += " [$Description]" }
-	
-	if ($PSCmdlet.ShouldProcess($Path, $action))
-	{
-		try
-		{
-			Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-			Write-HostEx "  [ OK ] Removed: $Description ($Path)" -ForegroundColor Green
-			$script:Stats.ItemsRemoved++
-		}
-		catch
-		{
-			Write-HostEx "  [ ERROR ] Error removing $Description`: $_" -ForegroundColor Red
-		}
-	}
-}
-
 # ====================  MAIN  ====================
 
-Write-HostEx ("`n" + "="*60) -ForegroundColor Cyan
+Write-HostEx ("`n" + "="*66) -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx " EEEEEEE  XX    XX  LL        000000    UU     UU  DDDDDD  " -ForegroundColor Cyan
-Write-HostEx " EE        XX  XX   LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
-Write-HostEx " EEEEE      XXXX    LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
-Write-HostEx " EE        XX  XX   LL      OO      OO  UU     UU  DD    DD " -ForegroundColor Cyan
-Write-HostEx " EEEEEEE  XX    XX  LLLLLLL   000000     UUUUuUU   DDDDDD  " -ForegroundColor Cyan
+Write-HostEx "  EEEEEEE   XX    XX   LL        000000     UU     UU   DDDDDD  " -ForegroundColor Cyan
+Write-HostEx "  EE         XX  XX    LL      OO      OO   UU     UU   DD    DD " -ForegroundColor Cyan
+Write-HostEx "  EEEEE       XXXX     LL      OO      OO   UU     UU   DD    DD " -ForegroundColor Cyan
+Write-HostEx "  EE         XX  XX    LL      OO      OO   UU     UU   DD    DD " -ForegroundColor Cyan
+Write-HostEx "  EEEEEEE   XX    XX   LLLLLLL   000000      UUUUuUU    DDDDDD  " -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx "                         PRESENTS" -ForegroundColor Cyan
+Write-HostEx "                            PRESENTS" -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx "                PRIVACY & TELEMETRY KILLER" -ForegroundColor Cyan
+Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.2" -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx ("="*60) -ForegroundColor Cyan
+Write-HostEx ("="*66) -ForegroundColor Cyan
 
 # ---------- 1. Registry ----------
 Write-HostEx "`n[>] STEP 1: Applying registry policies..." -ForegroundColor Magenta
@@ -244,8 +188,6 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection';                     Name='DisableOneSettingsDownloads';                  Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection';      Name='Allowtelemetry';                               Value=0},
 	@{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies\DataCollection'; Name ='AllowTelemetry';                       Value=0},
-    # @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender\SmartScreen';               Name='ConfigureAppInstallControlEnabled';            Value=1},
-	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\MRT'; Name='DontOfferThroughWUAU'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Device Metadata'; Name='PreventDeviceMetadataFromNetwork'; Value=1},
 	@{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\DataCollection'; Name='AllowTelemetry'; Value=0},
@@ -274,18 +216,22 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\MSDeploy\3'; Name='EnableTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
 
-    # --- Experimentation on user sys ---
-    @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\System'; Name='AllowExperimentation'; Value=0},
-     
-    # --- CDPUserSvc block this curiosity service if y not use Timeline, Virtual Desktops, Your Phone app, Night Light --- 
-    # @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\CDPUserSvc'; Name='Start'; Value=4},
+    # --- IWA ---
+    @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings';      Name='EnableNegotiate'; Value=0},
+
+    # --- Event Tracing ---
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing';             Name='NoAutoStart';     Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing\SCM\Regular'; Name='TracingDisabled'; Value=1},
+
+    # --- Experiments on user sys ---
+    @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\System';         Name='AllowExperimentation'; Value=0},
 
     # --- Where y down file ---
     @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments'; Name='SaveZoneInformation'; Value=1},
 	
 	# --- EventLog Config ---
 	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
-	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Telemetry'; Name='Enabled'; Value=0},
+	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Telemetry'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Inventory'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Troubleshooter'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant/Trace'; Name='Enabled'; Value=0},
@@ -294,7 +240,11 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant'; Name='Enabled'; Value=0},
 
     # --- Disable widgets ---
+	# --- Windows 10 ---
     @{Path='HKCU:\Software\Microsoft\PolicyManager\default\NewsAndInterests\AllowNewsAndInterests';                Name='value';               Value=0},
+	# --- Windows 11 ---
+	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';                                     Name='TaskbarDa';            Value=0},
+	
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Dsh';                                                                Name='AllowNewsAndInterests'; Value=0},
 
     # --- AppCompatFlags ---
@@ -379,10 +329,10 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Internet Explorer\Safety\PrivacIE';          Name='DisableLogging';                                 Value=1},
 	
 	# --- Wi-Fi Sense ---
-	@{ Path = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting'; Name = 'Value'; Value = 0 },
+	@{ Path = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowWiFiHotSpotReporting';           Name = 'Value'; Value = 0 },
 	@{ Path = 'HKLM:\SOFTWARE\Microsoft\PolicyManager\default\WiFi\AllowAutoConnectToWiFiSenseHotspots'; Name = 'Value'; Value = 0 },
-	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config'; Name = 'AutoConnectAllowedOEM'; Value = 0 },
-	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config'; Name = 'WiFISenseAllowed'; Value = 0 },
+	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config';                               Name = 'AutoConnectAllowedOEM'; Value = 0 },
+	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config';                               Name = 'WiFISenseAllowed'; Value = 0 },
 
     # --- Input / Handwriting / Speech telemetry ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitInkCollection';                  Value=1},
@@ -443,6 +393,10 @@ $reg = @(
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';  					   Name='ConfigureWindowsSpotlight';                      Value=2},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';    				   Name='IncludeEnterpriseSpotlight';                     Value=0},
 	@{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='HideFileExt';                                    Value=0},
+	
+	# --- Disable AutoRun FlashDrive+CDRom+Portable Devices ---
+	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers';    Name='DisableAutoplay'; Value=1},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\cdrom';                                Name='AutoRun';         Value=0},
     
     @{Path='HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\Bags\AllFolders\Shell'; Name='FolderType'; Value='NotSpecified'; Type='String'},
     @{Path='HKCU:\Control Panel\Accessibility'; Name='DynamicScrollbars'; Value=0},
@@ -510,7 +464,7 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\cellularData';       Name='Value'; Value='Deny';  Type='String'},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\chat';               Name='Value'; Value='Deny';  Type='String'},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\contacts';           Name='Value'; Value='Deny';  Type='String'},
-    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email';             Name='Value'; Value='Deny';  Type='String'},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\email';              Name='Value'; Value='Deny';  Type='String'},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\graphicsCaptureProgrammatic'; Name='Value'; Value='Deny'; Type='String'},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\graphicsCaptureWithoutBorder'; Name='Value'; Value='Deny'; Type='String'},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\location';          Name='Value'; Value='Deny';  Type='String'},
@@ -586,26 +540,83 @@ $reg = @(
 Write-HostEx "Processing $($reg.Count) registry settings..." -ForegroundColor White
 $reg | ForEach-Object { Set-RegistryValue @_ }
 
-# ---------- 2. Create Scheduled Task to enforce AllowTelemetry = 0 ----------
-Write-HostEx "`n[>] STEP 2: Creating scheduled task to enforce AllowTelemetry = 0..." -ForegroundColor Magenta
-
+# ---------- 2. Create Scheduled Task to enforce critical telemetry registry keys ----------
+Write-HostEx "`n[>] STEP 2: Creating scheduled task to enforce critical telemetry registry keys..." -ForegroundColor Magenta
 $taskName = "AllowTelemetryZero"
 $scriptPath = "$env:ProgramData\Scripts\Fix-Telemetry.ps1"
 
-if (!(Test-Path $scriptPath)) {
-    $null = New-Item -Path (Split-Path $scriptPath) -ItemType Directory -Force
-    @'
-$path = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
-$name = 'AllowTelemetry'
-$desired = 0
-$current = Get-ItemProperty -Path $path -Name $name -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $name -ErrorAction SilentlyContinue
-if ($current -ne $desired) {
-    if (!(Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
-    Set-ItemProperty -Path $path -Name $name -Type DWord -Value $desired -Force
+$null = New-Item -Path (Split-Path $scriptPath) -ItemType Directory -Force
+
+$existedBeforeWrite = Test-Path $scriptPath -PathType Leaf
+
+@'
+# Fix-Telemetry.ps1 - Enforced at every startup
+# Function to safely set registry values
+function Set-RegistryValue {
+    param (
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][object]$Value,
+        [string]$Type = 'DWord'
+    )
+    try {
+        if (!(Test-Path $Path)) {
+            New-Item -Path $Path -Force | Out-Null
+        }
+        $current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
+        $currentVal = if ($Name -eq '(Default)') { (Get-Item -LiteralPath $Path).GetValue('') } else { $current.$Name }
+        if ($null -ne $currentVal -and "$currentVal" -eq "$Value") {
+            # Already set, do nothing
+            return
+        }
+        if ($Name -eq '(Default)') {
+            Set-Item -LiteralPath $Path -Value $Value -Force
+        } else {
+            Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
+        }
+    }
+    catch {
+        # Log error or silently fail
+    }
+}
+# Array of registry settings to enforce
+$settingsToEnforce = @(
+    # Core Telemetry Setting
+    @{
+        Path  = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'
+        Name  = 'AllowTelemetry'
+        Value = 0
+        Type  = 'DWord'
+    },
+    # ClientTelemetry Task (Identified by user)
+    @{
+        Path  = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\ClientTelemetry'
+        Name  = 'TaskEnableRun'
+        Value = 0
+        Type  = 'DWord'
+    },
+    # Driver Database Telemetry (Identified by user)
+    @{
+        Path  = 'HKLM:\SYSTEM\DriverDatabase\Policies\Settings'
+        Name  = 'DisableSendGenericDriverNotFoundToWER'
+        Value = 1
+        Type  = 'DWord'
+    }
+    # Add more persistent keys here as needed in the future
+)
+# Apply each setting
+foreach ($setting in $settingsToEnforce) {
+    Set-RegistryValue @setting
 }
 '@ | Set-Content -Path $scriptPath -Encoding UTF8
+
+if ($existedBeforeWrite) {
+    Write-HostEx "  [ OK ] Script file '$($scriptPath)' re-created" -ForegroundColor Green
+} else {
+    Write-HostEx "  [ OK ] Script file '$($scriptPath)' created" -ForegroundColor Green
 }
 
+# Define and register the scheduled task
 $action = New-ScheduledTaskAction `
           -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
           -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
@@ -613,9 +624,9 @@ $trigger  = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet `
             -AllowStartIfOnBatteries `
             -DontStopIfGoingOnBatteries `
-            -StartWhenAvailable
+            -StartWhenAvailable `
+            -ExecutionTimeLimit (New-TimeSpan -Hours 1) # Prevents hanging
 $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-
 $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 if (!$existing) {
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
@@ -634,7 +645,10 @@ $services = @(
     'wisvc',
     'Telemetry',
     'WpcMonSvc',
+
+    # --- CDPUserSvc block this curiosity service if y not use Night Light , Virtual Desktops Timeline, Your Phone app --- 
     # 'CDPUserSvc',
+    
     'diagnosticshub.standardcollector.service',
     'WMPNetworkSvc'
 )
@@ -687,13 +701,13 @@ try {
     Write-HostEx "  [i] Ndu service not found or inaccessible" -ForegroundColor DarkYellow
 }
 
-# ---------- 3. Scheduled Tasks ----------
+# ---------- 4. Scheduled Tasks ----------
 Write-HostEx "`n[>] STEP 4: Disabling scheduled tasks..." -ForegroundColor Magenta
 $tasks = @(
-   # Local .NET compilation - not telemetry
+   # Local .NET compilation 
    # '\Microsoft\Windows\.NET Framework\.NET Framework NGEN v4.0.30319',
    
-   # App integrity verification - not telemetry
+   # App integrity verification 
    # '\Microsoft\Windows\ApplicationData\appuriverifierdaily',
    
    # Application compatibility telemetry
@@ -702,10 +716,10 @@ $tasks = @(
    '\Microsoft\Windows\Application Experience\StartupAppTask',
    '\Microsoft\Windows\Application Experience\AITAgent',
    
-   # Local compatibility patches - not telemetry
+   # Local compatibility patches 
    # '\Microsoft\Windows\Application Experience\PcaPatchDbTask',
    
-   # Disk check scheduling - not telemetry
+   # Disk check scheduling 
    # '\Microsoft\Windows\Autochk\Proxy',
    
    # Customer Experience Improvement Program (CEIP) - telemetry collection
@@ -721,56 +735,56 @@ $tasks = @(
 
    'Microsoft\Windows\Work Folders\Work Folders Logon Synchronization',
    
-   # Local disk cleanup - not telemetry
+   # Local disk cleanup 
    # '\Microsoft\Windows\DiskCleanup\SilentCleanup',
    
    # Disk diagnostics with data transmission
    '\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector',
    
-   # Local security policy updates - not telemetry
+   # Local security policy updates 
    # '\Microsoft\Windows\ExploitGuard\ExploitGuard MDM policy Refresh',
    
    # User feedback collection
    '\Microsoft\Windows\Feedback\Siuf\DmClient',
    '\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload',
    
-   # Local file history maintenance - not telemetry
+   # Local file history maintenance 
    # '\Microsoft\Windows\FileHistory\File History (maintenance mode)',
    
-   # Local experimental features management - not telemetry
+   # Local experimental features management 
    # '\Microsoft\Windows\Flighting\FeatureConfig\ReconcileFeatures',
    
    # Experimental features - telemetry
    '\Microsoft\Windows\Flighting\FeatureConfig\UsageDataFlushing',
    '\Microsoft\Windows\Flighting\FeatureConfig\UsageDataReporting',
    
-   # Local settings updates - not telemetry
+   # Local settings updates 
    # '\Microsoft\Windows\Flighting\OneSettings\RefreshCache',
    
-   # Local biometric data cleanup - not telemetry
+   # Local biometric data cleanup 
    # '\Microsoft\Windows\HelloFace\FODCleanupTask',
    
    # Local language settings sync
    '\Microsoft\Windows\International\Synchronize Language Settings',
    
-   # Local language components installation - not telemetry
+   # Local language components installation 
    # '\Microsoft\Windows\LanguageComponentsInstaller\Installation',
    
-   # Local performance assessment - not telemetry
+   # Local performance assessment 
    # '\Microsoft\Windows\Maintenance\WinSAT',
    
-   # Local maps notifications - not telemetry
+   # Local maps notifications 
    # '\Microsoft\Windows\Maps\MapsToastTask',
    # '\Microsoft\Windows\Maps\MapsUpdateTask',
    
-   # Local memory diagnostics - not telemetry
+   # Local memory diagnostics 
    # '\Microsoft\Windows\MemoryDiagnostic\ProcessMemoryDiagnosticEvents',
    # '\Microsoft\Windows\MemoryDiagnostic\RunFullMemoryDiagnostic',
    
    # Network information collection
    '\Microsoft\Windows\NetTrace\GatherNetworkInfo',
    
-   # Local offline files sync - not telemetry
+   # Local offline files sync 
    # '\Microsoft\Windows\Offline Files\Background Synchronization',
    # '\Microsoft\Windows\Offline Files\Logon Synchronization',
    
@@ -780,45 +794,45 @@ $tasks = @(
    # Power efficiency diagnostics with data transmission
    '\Microsoft\Windows\Power Efficiency Diagnostics\AnalyzeSystem',
    
-   # Local installation rights check - not telemetry
+   # Local installation rights check 
    # '\Microsoft\Windows\PushToInstall\LoginCheck',
    # '\Microsoft\Windows\PushToInstall\Registration',
    
-   # Local registry backup - not telemetry
+   # Local registry backup 
    # '\Microsoft\Windows\Registry\RegIdleBackup',
    
-   # Local retail demo cleanup - not telemetry
+   # Local retail demo cleanup 
    # '\Microsoft\Windows\RetailDemo\CleanupOfflineContent',
    
-   # Local setup cleanup - not telemetry
+   # Local setup cleanup 
    # '\Microsoft\Windows\Setup\SetupCleanupTask',
    
-   # Local parental controls - not telemetry
+   # Local parental controls 
    # '\Microsoft\Windows\Shell\FamilySafetyMonitor',
    # '\Microsoft\Windows\Shell\FamilySafetyRefreshTask',
    
-   # Local search index maintenance - not telemetry
+   # Local search index maintenance 
    # '\Microsoft\Windows\Shell\IndexerAutomaticMaintenance',
    
    # Local speech model downloads
    '\Microsoft\Windows\Speech\SpeechModelDownloadTask',
    
-   # Local swap file assessment - not telemetry
+   # Local swap file assessment 
    # '\Microsoft\Windows\Sysmain\WsSwapAssessmentTask',
    
-   # Local system restore - not telemetry
+   # Local system restore 
    # '\Microsoft\Windows\SystemRestore\SR',
    
-   # Local update notifications - not telemetry
+   # Local update notifications 
    # '\Microsoft\Windows\UNP\RunUpdateNotificationMgr',
    
    # User profile cloud upload
    '\Microsoft\Windows\User Profile Service\HiveUploadTask',
    
-   # Local update remediation - not telemetry
+   # Local update remediation 
    # '\Microsoft\Windows\WaaSMedic\PerformRemediation',
    
-   # Local Edge updates - not telemetry
+   # Local Edge updates 
    # '\MicrosoftEdgeUpdateTaskMachineCore',
    # '\MicrosoftEdgeUpdateTaskMachineUA',
    
@@ -851,8 +865,6 @@ try {
 Write-HostEx "`n[>] STEP 5: Physically deleting CompatTelRunner.exe..." -ForegroundColor Magenta
 
 $compatPath = "$env:SystemRoot\System32\CompatTelRunner.exe"
-$takeown    = "$env:SystemRoot\System32\takeown.exe"
-$icacls     = "$env:SystemRoot\System32\icacls.exe"
 
 if (Test-Path $compatPath) {
     try {
@@ -873,11 +885,9 @@ if (Test-Path $compatPath) {
     Write-HostEx "  [ SKIP ] CompatTelRunner.exe not found" -ForegroundColor Gray
 }
 
-# ---------- 5. Clean DiagTrack Logs ----------
+# ---------- 6. Clean DiagTrack Logs ----------
 Write-HostEx "`n[>] STEP 6: Cleaning DiagTrack logs..." -ForegroundColor Magenta
 $diagPath = "$env:ProgramData\Microsoft\Diagnosis"
-$icacls   = "$env:SystemRoot\System32\icacls.exe"
-$takeown  = "$env:SystemRoot\System32\takeown.exe"
 
 if (-not (Test-Path $diagPath)) {
     Write-HostEx "  [INFO] Diagnosis folder not found – skipping." -ForegroundColor Cyan
@@ -925,155 +935,159 @@ else {
 
 Write-HostEx "  [ OK ] Diagnosis folder processed" -ForegroundColor Green
 
-# ---------- 6. Optional Windows Features ----------
+# ---------- 7. Optional Windows Features ----------
 Write-HostEx "`n[>] STEP 7: Disabling unnecessary components..." -ForegroundColor Magenta
-@(
-  # === Critical Security Risk Components - SMB1 and Legacy Protocols ===
-  # 'SMB1Protocol',
-  # 'SMB1Protocol-Client',
-  # 'SMB1Protocol-Server',
-  # 'SMB1Protocol-Deprecation',
-  # 'FS-SMB1',
-  # 'ClientForNFS-Infrastructure',
-  # 'ServicesForNFS-ClientOnly',
-  # 'ServicesForNFS-ServerAndClient',
-	
-  # == Insecure Network Protocols and Services ===
-  # 'TelnetClient',
-  # 'TelnetServer',
-  # 'TFTP',
-  # 'SimpleTcpip',
-  # 'SimpleTCP',
-  # 'RasRip',
-  # 'RIP',
-  # 'SNMP',
-  # 'LPR-Print-Server',
-  # 'Print-LPDPrintService',
-  # 'Printing-Foundation-LPRPortMonitor',
-  # 'IIS-FTPServer',
-  # 'IIS-FTPSvc',
-  # 'IIS-FTPExtensibility'
-	
-  # === Microsoft Message Queuing (MSMQ) ===
-  'MSMQ-Container',
-  'MSMQ-Server',
-  'MSMQ-Services',
-  'MSMQ-Triggers',
-  'MSMQ-ADIntegration',
-  'MSMQ-HTTP',
-  'MSMQ-Multicast',
-  'MSMQ-DCOMProxy',
+Write-HostEx "    This step disables enterprise/server features (Hyper-V, IIS, MSMQ, etc.)" -ForegroundColor DarkGray
+Write-HostEx "    Useful for hardening workstations. Safe to skip if unsure." -ForegroundColor DarkGray
+Write-HostEx "    Do you want to proceed? (y/N): " -ForegroundColor Yellow
 
-  # === Print and Document Services ===
-  # 'Printing-PrintToPDFServices-Features',
-  # 'Printing-XPSServices-Features',
-  # 'Printing-Foundation-Features',
-  # 'Printing-Foundation-InternetPrinting-Client',
-  # 'Printing-Foundation-LPDPrintService',
-  # 'Printing-Foundation-LPRPortMonitor',
-  # 'FaxServicesClientPackage',
-  # 'ScanManagementConsole',
-  # 'Xps-Foundation-Xps-Viewer',
-  # 'Microsoft-Windows-Printing-XPSServices-Package',
-  # 'TIFFIFilter',
+$choice = [Console]::ReadKey($true).Key
+Write-Host "" 
 
-  # === Remote Access and VPN Components ===
-  'RemoteAccess',
-  'DirectAccess-VPN',
-  'Routing',
-  'RasRip', 
-  'RasCMAK',
-  'RSAT-RemoteAccess',
-  'RSAT-RemoteAccess-Mgmt',
-  'RSAT-RemoteAccess-PowerShell',
-  # === Directory Services and Active Directory Components ===
-  'DirectoryServices-ADAM-Client',
-  'RSAT-ADDS',
-  'RSAT-ADDS-Tools',
-  'RSAT-AD-AdminCenter', 
-  'RSAT-AD-PowerShell',
-  'RSAT-ADLDS',
-  'RSAT-DNS-Server',
+if ($choice -eq 'Y' -or $choice -eq 'y') {
+    Write-HostEx "  [i] Proceeding with component disabling..." -ForegroundColor Cyan
 
-  # === Enterprise and Server Features (Workstation Hardening) ===
-  'DataCenterBridging',
-  'MultiPoint-Connector',
-  'MultiPoint-Connector-Services',
-  'MultiPoint-Tools',
-  'HostGuardian',
-  'ServerCore-Drivers-General',
-  'ServerCore-Drivers-General-WOW64',
-  
-  # === Hyper-V and Virtualization Components ===
-  # P.S. Don't worry - virtual machines like VirtualBox or VMware - work without this component
-  'Microsoft-Hyper-V-All',
-  'Microsoft-Hyper-V',
-  'Microsoft-Hyper-V-Tools-All',
-  'Microsoft-Hyper-V-Management-PowerShell',
-  'Microsoft-Hyper-V-Hypervisor',
-  'Microsoft-Hyper-V-Services',
-  'Microsoft-Hyper-V-Management-Clients',
-  'HypervisorPlatform',
-  'VirtualMachinePlatform',
-  'Containers-DisposableClientVM',
+    @(
+      # === Critical Security Risk Components - SMB1 and Legacy Protocols ===
+      # 'SMB1Protocol',
+      # 'SMB1Protocol-Client',
+      # 'SMB1Protocol-Server',
+      # 'SMB1Protocol-Deprecation',
+      # 'FS-SMB1',
+      # 'ClientForNFS-Infrastructure',
+      # 'ServicesForNFS-ClientOnly',
+      # 'ServicesForNFS-ServerAndClient',
+      # == Insecure Network Protocols and Services ===
+      # 'TelnetClient',
+      # 'TelnetServer',
+      # 'TFTP',
+      # 'SimpleTcpip',
+      # 'SimpleTCP',
+      # 'RasRip',
+      # 'RIP',
+      # 'SNMP',
+      # 'LPR-Print-Server',
+      # 'Print-LPDPrintService',
+      # 'Printing-Foundation-LPRPortMonitor',
+      # 'IIS-FTPServer',
+      # 'IIS-FTPSvc',
+      # 'IIS-FTPExtensibility'
+      # === Microsoft Message Queuing (MSMQ) ===
+      'MSMQ-Container',
+      'MSMQ-Server',
+      'MSMQ-Services',
+      'MSMQ-Triggers',
+      'MSMQ-ADIntegration',
+      'MSMQ-HTTP',
+      'MSMQ-Multicast',
+      'MSMQ-DCOMProxy',
+      # === Print and Document Services ===
+      # 'Printing-PrintToPDFServices-Features',
+      # 'Printing-XPSServices-Features',
+      # 'Printing-Foundation-Features',
+      # 'Printing-Foundation-InternetPrinting-Client',
+      # 'Printing-Foundation-LPDPrintService',
+      # 'Printing-Foundation-LPRPortMonitor',
+      # 'FaxServicesClientPackage',
+      # 'ScanManagementConsole',
+      # 'Xps-Foundation-Xps-Viewer',
+      # 'Microsoft-Windows-Printing-XPSServices-Package',
+      # 'TIFFIFilter',
+      # === Remote Access and VPN Components ===
+      'RemoteAccess',
+      'DirectAccess-VPN',
+      'Routing',
+      'RasRip', 
+      'RasCMAK',
+      'RSAT-RemoteAccess',
+      'RSAT-RemoteAccess-Mgmt',
+      'RSAT-RemoteAccess-PowerShell',
+      # === Directory Services and Active Directory Components ===
+      'DirectoryServices-ADAM-Client',
+      'RSAT-ADDS',
+      'RSAT-ADDS-Tools',
+      'RSAT-AD-AdminCenter', 
+      'RSAT-AD-PowerShell',
+      'RSAT-ADLDS',
+      'RSAT-DNS-Server',
+      # === Enterprise and Server Features (Workstation Hardening) ===
+      'DataCenterBridging',
+      'MultiPoint-Connector',
+      'MultiPoint-Connector-Services',
+      'MultiPoint-Tools',
+      'HostGuardian',
+      'ServerCore-Drivers-General',
+      'ServerCore-Drivers-General-WOW64',
+      # === Hyper-V and Virtualization Components ===
+      # P.S. Don't worry - virtual machines like VirtualBox or VMware - work without this component
+      'Microsoft-Hyper-V-All',
+      'Microsoft-Hyper-V',
+      'Microsoft-Hyper-V-Tools-All',
+      'Microsoft-Hyper-V-Management-PowerShell',
+      'Microsoft-Hyper-V-Hypervisor',
+      'Microsoft-Hyper-V-Services',
+      'Microsoft-Hyper-V-Management-Clients',
+      'HypervisorPlatform',
+      'VirtualMachinePlatform',
+      'Containers-DisposableClientVM',
+      # === Internet Information Services (IIS) ===
+      # IIS = Microsoft Web Server (analogue of Apache/Nginx)
+      # Used to host websites on Windows Server
+      # Supports ASP.NET, PHP and other server technologies
+      # Works as a service in the background
+      'IIS-WebServerRole',
+      'IIS-WebServer',
+      'IIS-CommonHttpFeatures',
+      'IIS-HttpErrors',
+      'IIS-HttpRedirect',
+      'IIS-ApplicationDevelopment',
+      'IIS-NetFxExtensibility45',
+      'IIS-NetFxExtensibility',
+      'IIS-ISAPIExtensions',
+      'IIS-ISAPIFilter',
+      'IIS-ASPNET45',
+      'IIS-ASPNET',
+      'IIS-CGI',
+      'IIS-ServerSideIncludes',
+      'IIS-CustomLogging',
+      'IIS-LoggingLibraries',
+      'IIS-RequestMonitor',
+      'IIS-HttpTracing',
+      'IIS-BasicAuthentication',
+      'IIS-WindowsAuthentication',
+      'IIS-DigestAuthentication',
+      'IIS-ClientCertificateMappingAuthentication',
+      'IIS-IISCertificateMappingAuthentication',
+      'IIS-URLAuthorization',
+      'IIS-RequestFiltering',
+      'IIS-IPSecurity',
+      'IIS-Performance',
+      'IIS-HttpCompressionStatic',
+      'IIS-HttpCompressionDynamic',
+      'IIS-WebDAV',
+      'IIS-LegacySnapIn',
+      'IIS-ManagementConsole',
+      'IIS-IIS6ManagementCompatibility',
+      'IIS-Metabase',
+      'IIS-HostableWebCore',
+      'IIS-StaticContent',
+      'IIS-DefaultDocument',
+      'IIS-DirectoryBrowsing',
+      'IIS-ODBC',
+      # === Legacy PowerShell and Scripting Components ===
+      # If y want write PS scripts - use VS Code with PS syntax and analyzer plugin
+      'MicrosoftWindowsPowerShellV2Root',
+      'MicrosoftWindowsPowerShellV2',
+      'WindowsPowerShellWebAccess',
+      'MicrosoftWindowsPowerShellISE',
+      'Microsoft.Windows.PowerShell.ISE',
+      'MicrosoftWindowsPowerShellV2Engine'
+    ) | ForEach-Object { Disable-WindowsFeature $_ }
+} else {
+    Write-HostEx "  [ SKIP ] User chose to skip disabling optional components." -ForegroundColor Gray
+}
 
-  # === Internet Information Services (IIS) ===
-  # IIS = Microsoft Web Server (analogue of Apache/Nginx)
-  # Used to host websites on Windows Server
-  # Supports ASP.NET, PHP and other server technologies
-  # Works as a service in the background
-  'IIS-WebServerRole',
-  'IIS-WebServer',
-  'IIS-CommonHttpFeatures',
-  'IIS-HttpErrors',
-  'IIS-HttpRedirect',
-  'IIS-ApplicationDevelopment',
-  'IIS-NetFxExtensibility45',
-  'IIS-NetFxExtensibility',
-  'IIS-ISAPIExtensions',
-  'IIS-ISAPIFilter',
-  'IIS-ASPNET45',
-  'IIS-ASPNET',
-  'IIS-CGI',
-  'IIS-ServerSideIncludes',
-  'IIS-CustomLogging',
-  'IIS-LoggingLibraries',
-  'IIS-RequestMonitor',
-  'IIS-HttpTracing',
-  'IIS-BasicAuthentication',
-  'IIS-WindowsAuthentication',
-  'IIS-DigestAuthentication',
-  'IIS-ClientCertificateMappingAuthentication',
-  'IIS-IISCertificateMappingAuthentication',
-  'IIS-URLAuthorization',
-  'IIS-RequestFiltering',
-  'IIS-IPSecurity',
-  'IIS-Performance',
-  'IIS-HttpCompressionStatic',
-  'IIS-HttpCompressionDynamic',
-  'IIS-WebDAV',
-  'IIS-LegacySnapIn',
-  'IIS-ManagementConsole',
-  'IIS-IIS6ManagementCompatibility',
-  'IIS-Metabase',
-  'IIS-HostableWebCore',
-  'IIS-StaticContent',
-  'IIS-DefaultDocument',
-  'IIS-DirectoryBrowsing',
-  'IIS-ODBC',
-
-  # === Legacy PowerShell and Scripting Components ===
-  # If y want write PS scripts - use VS Code with PS syntax and analyzer plugin
-  'MicrosoftWindowsPowerShellV2Root',
-  'MicrosoftWindowsPowerShellV2',
-  'WindowsPowerShellWebAccess',
-  'MicrosoftWindowsPowerShellISE',
-  'Microsoft.Windows.PowerShell.ISE',
-  'MicrosoftWindowsPowerShellV2Engine'
-
-) | ForEach-Object { Disable-WindowsFeature $_ }
-
-# ---------- 7. Disable UWP Background Apps ----------
+# ---------- 8. Disable UWP Background Apps ----------
 Write-HostEx "`n[>] STEP 8: Disabling UWP background apps..." -ForegroundColor Magenta
 try
 {
@@ -1103,7 +1117,7 @@ catch
     Write-HostEx "  [ ERROR ] Error disabling UWP background apps: $_" -ForegroundColor Red
 }
 
-# ---------- 8. Optimize Windows for SSD ----------
+# ---------- 9. Optimize Windows for SSD ----------
 Write-Host "`n[>] Step 9 : Optimize Windows for SSD..." -ForegroundColor Magenta
 
 $bootDrive = (Get-CimInstance Win32_OperatingSystem).SystemDrive   # C:
@@ -1114,12 +1128,6 @@ if ($mediaType -ne 'SSD') {
     Write-Host "  [ SKIP ] OS is on $mediaType disk – SSD optimizations not required." -ForegroundColor Gray
     # return
 }
-
-$SYS32    = "$env:SystemRoot\System32"
-$FSUTIL   = "$SYS32\fsutil.exe"
-$POWERCFG = "$SYS32\powercfg.exe"
-$SC       = "$SYS32\sc.exe"
-$WEVTUTIL = "$SYS32\wevtutil.exe"
 
 filter Write-Status($msg, $color='White') { Write-Host $msg -ForegroundColor $color }
 
@@ -1327,7 +1335,7 @@ Write-Status "  [ OK ] Pagefile set to $targetMB MB" Green
 
 Write-Host "`n[i] All SSD optimizations ended." -ForegroundColor Cyan
 
-# ---------- 9. Reserved Storage ----------
+# ---------- 10. Reserved Storage ----------
 Write-HostEx "`n[>] STEP 10: Disabling Reserved Storage..." -ForegroundColor Magenta
 
 try {
