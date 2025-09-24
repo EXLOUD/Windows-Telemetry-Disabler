@@ -1,4 +1,4 @@
-﻿#Requires -RunAsAdministrator
+#Requires -RunAsAdministrator
 [CmdletBinding()] param()
 
 $ErrorActionPreference = 'Continue'
@@ -61,7 +61,6 @@ function Set-RegistryValue {
         [Parameter(Mandatory)][object]$Value,
         [string]$Type = 'DWord'
     )
-
     try {
         if (!(Test-Path $Path)) {
             if ($PSCmdlet.ShouldProcess($Path, 'Create key')) {
@@ -69,17 +68,14 @@ function Set-RegistryValue {
                 New-Item -Path $Path -Force | Out-Null
             }
         }
-
         $current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
         $currentVal = if ($Name -eq '(Default)') { (Get-Item -LiteralPath $Path).GetValue('') } else { $current.$Name }
-
         if ($Type -eq 'ExpandString' -and $currentVal -is [string]) {
             $currentVal = [System.Environment]::ExpandEnvironmentVariables($currentVal)
             $desiredVal = [System.Environment]::ExpandEnvironmentVariables($Value)
         } else {
             $desiredVal = $Value
         }
-
         if ($null -ne $currentVal -and "$currentVal" -eq "$desiredVal") {
             Write-HostEx "  [ SKIP ] Already set: $Name = $desiredVal" -ForegroundColor Gray
             $script:Stats.RegistrySkipped++
@@ -88,14 +84,60 @@ function Set-RegistryValue {
 
         $target = "$Path\$Name"
         if ($PSCmdlet.ShouldProcess($target, "Set $desiredVal (Type=$Type)")) {
-            if ($Name -eq '(Default)') {
-                # (Default) задається через Set-Item
-                Set-Item -LiteralPath $Path -Value $Value -Force
-            } else {
-                Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
+            try {
+                if ($Name -eq '(Default)') {
+                    Set-Item -LiteralPath $Path -Value $Value -Force -ErrorAction Stop
+                } else {
+                    Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force -ErrorAction Stop
+                }
+                Write-HostEx "  [ OK ] Applied: $Path\$Name = $desiredVal" -ForegroundColor Green
+                $script:Stats.RegistryApplied++
             }
-            Write-HostEx "  [ OK ] Applied: $Path\$Name = $desiredVal" -ForegroundColor Green
-            $script:Stats.RegistryApplied++
+            catch [System.UnauthorizedAccessException] {
+                Write-HostEx "  [i] Unauthorized access. Trying reg.exe fallback for: $Path\$Name" -ForegroundColor DarkYellow
+
+                # Конвертуємо шлях для reg.exe (HKCU: → HKEY_CURRENT_USER тощо)
+                $regRootMap = @{
+                    'HKCU:' = 'HKEY_CURRENT_USER'
+                    'HKLM:' = 'HKEY_LOCAL_MACHINE'
+                }
+                $regPath = $Path
+                foreach ($prefix in $regRootMap.Keys) {
+                    if ($Path.StartsWith($prefix)) {
+                        $regPath = $Path.Replace($prefix, $regRootMap[$prefix])
+                        break
+                    }
+                }
+
+                # Мапимо типи PowerShell → reg.exe
+                $regTypeMap = @{
+                    'DWord'        = 'REG_DWORD'
+                    'String'       = 'REG_SZ'
+                    'ExpandString' = 'REG_EXPAND_SZ'
+                    'QWord'        = 'REG_QWORD'
+                    'Binary'       = 'REG_BINARY'
+                }
+                $regType = $regTypeMap[$Type]
+                if (-not $regType) { $regType = 'REG_DWORD' }
+
+                # Для Binary — перетворюємо масив байтів у hex-рядок
+                if ($Type -eq 'Binary') {
+                    $hexString = ($Value | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
+                    $result = reg add "$regPath" /v "$Name" /t $regType /d "$hexString" /f 2>&1
+                } else {
+                    $result = reg add "$regPath" /v "$Name" /t $regType /d "$Value" /f 2>&1
+                }
+
+                if ($LASTEXITCODE -eq 0) {
+                    Write-HostEx "  [ OK ] Applied via reg.exe: $Path\$Name = $desiredVal" -ForegroundColor Green
+                    $script:Stats.RegistryApplied++
+                } else {
+                    throw "reg.exe failed: $result"
+                }
+            }
+            catch {
+                throw $_
+            }
         }
     }
     catch {
@@ -116,9 +158,34 @@ function Remove-RegistryKeySafely {
             return
         }
         if ($PSCmdlet.ShouldProcess($Path, 'Remove registry key')) {
-            Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-            Write-HostEx "  [ OK ] Deleted key: $Path" -ForegroundColor Green
-            $script:Stats.RegistryDeleted++
+            try {
+                Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
+                Write-HostEx "  [ OK ] Deleted key: $Path" -ForegroundColor Green
+                $script:Stats.RegistryDeleted++
+            }
+            catch [System.UnauthorizedAccessException] {
+                Write-HostEx "  [i] Unauthorized access. Trying reg.exe fallback for: $Path" -ForegroundColor DarkYellow
+
+                $regRootMap = @{
+                    'HKCU:' = 'HKEY_CURRENT_USER'
+                    'HKLM:' = 'HKEY_LOCAL_MACHINE'
+                }
+                $regPath = $Path
+                foreach ($prefix in $regRootMap.Keys) {
+                    if ($Path.StartsWith($prefix)) {
+                        $regPath = $Path.Replace($prefix, $regRootMap[$prefix])
+                        break
+                    }
+                }
+
+                $result = reg delete "$regPath" /f 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-HostEx "  [ OK ] Deleted via reg.exe: $Path" -ForegroundColor Green
+                    $script:Stats.RegistryDeleted++
+                } else {
+                    throw "reg.exe failed: $result"
+                }
+            }
         }
     }
     catch {
@@ -190,7 +257,7 @@ Write-HostEx "  EEEEEEE   XX    XX   LLLLLLL   000000      UUUUuUU    DDDDDD  " 
 Write-HostEx " "
 Write-HostEx "                            PRESENTS" -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.3" -ForegroundColor Cyan
+Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.4" -ForegroundColor Cyan
 Write-HostEx " "
 Write-HostEx ("="*66) -ForegroundColor Cyan
 
@@ -211,13 +278,13 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection';                     Name='DoNotShowFeedbackNotifications';               Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection';                     Name='DisableOneSettingsDownloads';                  Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection';      Name='Allowtelemetry';                               Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection';      Name='DoNotShowFeedbackNotifications';               Value=1},
 	@{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies\DataCollection'; Name ='AllowTelemetry';                       Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Device Metadata'; Name='PreventDeviceMetadataFromNetwork'; Value=1},
 	@{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowTelemetry'; Value=0},
-	@{Path='HKLM:\SOFTWARE\Microsoft\DataCollection'; Name='AllowTelemetry'; Value=0},
-	@{Path='HKLM:\SYSTEM\DriverDatabase\Policies\Settings'; Name='DisableSendGenericDriverNotFoundToWER'; Value=1},
-	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows'; Name='CEIPEnable'; Value=0},
-	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Assistance\Client\1.0'; Name='NoActiveHelp'; Value=1},
+	@{Path='HKLM:\SYSTEM\DriverDatabase\Policies\Settings';            Name='DisableSendGenericDriverNotFoundToWER'; Value=1},
+	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows';      Name='CEIPEnable'; Value=0},
+	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Assistance\Client\1.0';  Name='NoActiveHelp'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowDesktopAnalyticsProcessing'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowUpdateComplianceProcessing'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowWUfBCloudProcessing'; Value=0},
@@ -239,6 +306,21 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing\SCM\Regular'; Name='TracingDisabled'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\MSDeploy\3'; Name='EnableTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowCommercialDataPipeline'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowDeviceNameInTelemetry'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='MicrosoftEdgeDataOptIn'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\DeviceHealthAttestationService'; Name='DisableSendGenericDriverNotFoundToWER'; Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Settings'; Name='DisableSendGenericDriverNotFoundToWER'; Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\default\Settings'; Name='AllowOnlineTips'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\TelemetryController'; Name='RunsBlocked'; Value=1},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\StorPort'; Name='TelemetryPerformanceEnabled'; Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\StorPort'; Name='TelemetryErrorDataEnabled'; Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\StorPort'; Name='TelemetryDeviceHealthEnabled'; Value=0},
+
+    # --- File History ---
+    # @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\FileHistory'; Name='Disabled'; Value=1},
+
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'; Name='DisablePrivacyExperience'; Value=1},
 
     # --- SPP Config ---
 	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
@@ -259,7 +341,7 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\System';         Name='AllowExperimentation'; Value=0},
 
     # --- Where y down file ---
-    @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments'; Name='SaveZoneInformation'; Value=1},
+    # @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments'; Name='SaveZoneInformation'; Value=1},
 	
 	# --- EventLog Config ---
 	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
@@ -315,6 +397,7 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableLocation';                              Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableLocationScripting';                     Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors';                 Name='DisableWindowsLocationProvider';               Value=1},
+	
 
     # --- DiagTrack services ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='DiagTrackAuthorization';                       Value=0},
@@ -368,7 +451,7 @@ $reg = @(
 	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config';                               Name = 'AutoConnectAllowedOEM'; Value = 0 },
 	@{ Path = 'HKLM:\SOFTWARE\Microsoft\WcmSvc\wifinetworkmanager\config';                               Name = 'WiFISenseAllowed'; Value = 0 },
 
-    # --- Input / Handwriting / Speech telemetry ---
+    # --- Input / Handwriting / Clipboard history / Cloud Clipboard / Speech telemetry ---
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitInkCollection';                  Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitTextCollection';                 Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='AllowInputPersonalization';                      Value=0},
@@ -395,10 +478,12 @@ $reg = @(
 	
     # --- User settings ---
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel'; Name='{20D04FE0-3AEA-1069-A2D8-08002B30309D}'; Value=0},
+
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo';                    Name='DisabledByGroupPolicy';                          Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
     @{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\AdvertisingInfo';  Name='Enabled';                                        Value=0},
+
     @{Path='HKCU:\Control Panel\International\User Profile';                               Name='HttpAcceptLanguageOptOut';                       Value=1},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='Start_TrackProgs';                               Value=0},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContent-338393Enabled';                Value=0},
@@ -422,14 +507,22 @@ $reg = @(
 	@{Path='HKCU:\SOFTWARE\Microsoft\Siuf\Rules';                                          Name='NumberOfSIUFInPeriod';                             Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\Siuf\Rules';                                          Name='PeriodInNanoSeconds';                              Value=0},
 	@{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='LaunchTo';                                         Value=1},
+
+    # --- Cloud Content ---
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';                       Name='DisableTailoredExperiencesWithDiagnosticData';     Value=1},
-	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';  					   Name='DisableWindowsSpotlightWindowsWelcomeExperience'; Value=1},
+	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';  					   Name='DisableWindowsSpotlightWindowsWelcomeExperience';  Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';     				   Name='DisableWindowsSpotlightFeatures';                Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';     				   Name='DisableWindowsSpotlightOnActionCenter';          Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';   					   Name='DisableWindowsSpotlightOnSettings';              Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';     			   	   Name='DisableThirdPartySuggestions';                   Value=1},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';  					   Name='ConfigureWindowsSpotlight';                      Value=2},
 	@{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';    				   Name='IncludeEnterpriseSpotlight';                     Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent';                       Name='DisableCloudOptimizedContent';                   Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent';                       Name='DisableConsumerAccountStateContent';             Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent';                       Name='DisableWindowsConsumerFeatures';                 Value=1},
+    @{Path='HKCU:\Software\Policies\Microsoft\Windows\CloudContent';                       Name='DisableTailoredExperiencesWithDiagnosticData';   Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\CloudContent';                       Name='DisableSoftLanding';                             Value=1},
+ 
 	@{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='HideFileExt';                                    Value=0},
 	
 	# --- Disable AutoRun FlashDrive+CDRom+Portable Devices ---
@@ -691,6 +784,8 @@ $services = @(
     'dmwappushservice',
     'PcaSvc',
     'wisvc',
+    'WerSvc',
+    'wercplsupport',
     'Telemetry',
     'WpcMonSvc',
     'UnistoreSvc', # --- Turn off email, contacts, calendar and personal data syncing ---
@@ -699,6 +794,7 @@ $services = @(
     # 'CDPUserSvc',
     
     'diagnosticshub.standardcollector.service',
+    'diagsvc',
     'WMPNetworkSvc'
 )
 
@@ -919,6 +1015,31 @@ try {
    }
 } catch {
    Write-HostEx "  [ ERROR ] Failed to delete CloudExperienceHost registry entries: $_" -ForegroundColor Red
+}
+
+# ---------- Delete CloudExperienceHost User Intent registry entries ----------
+Write-HostEx "`n[>] Deleting CloudExperienceHost User Intent registry entries..." -ForegroundColor Magenta
+$intentPaths = @(
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\creative",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\entertainment",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\family",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\gaming",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\schoolwork",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\business",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudExperienceHost\Intent\development"
+)
+
+foreach ($path in $intentPaths) {
+    if (Test-Path $path) {
+        try {
+            Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
+            Write-HostEx "  [ OK ] Deleted: $path" -ForegroundColor Green
+        } catch {
+            Write-HostEx "  [ ERROR ] Failed to delete: $path - $_" -ForegroundColor Red
+        }
+    } else {
+        Write-HostEx "  [ SKIP ] Not found: $path" -ForegroundColor Gray
+    }
 }
 
 # ---------- 5. Physically delete CompatTelRunner ----------
