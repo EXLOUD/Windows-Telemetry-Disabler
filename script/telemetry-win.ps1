@@ -61,6 +61,7 @@ function Set-RegistryValue {
         [Parameter(Mandatory)][object]$Value,
         [string]$Type = 'DWord'
     )
+
     try {
         if (!(Test-Path $Path)) {
             if ($PSCmdlet.ShouldProcess($Path, 'Create key')) {
@@ -68,14 +69,17 @@ function Set-RegistryValue {
                 New-Item -Path $Path -Force | Out-Null
             }
         }
+
         $current = Get-ItemProperty -Path $Path -Name $Name -ErrorAction SilentlyContinue
         $currentVal = if ($Name -eq '(Default)') { (Get-Item -LiteralPath $Path).GetValue('') } else { $current.$Name }
+
         if ($Type -eq 'ExpandString' -and $currentVal -is [string]) {
             $currentVal = [System.Environment]::ExpandEnvironmentVariables($currentVal)
             $desiredVal = [System.Environment]::ExpandEnvironmentVariables($Value)
         } else {
             $desiredVal = $Value
         }
+
         if ($null -ne $currentVal -and "$currentVal" -eq "$desiredVal") {
             Write-HostEx "  [ SKIP ] Already set: $Name = $desiredVal" -ForegroundColor Gray
             $script:Stats.RegistrySkipped++
@@ -84,60 +88,14 @@ function Set-RegistryValue {
 
         $target = "$Path\$Name"
         if ($PSCmdlet.ShouldProcess($target, "Set $desiredVal (Type=$Type)")) {
-            try {
-                if ($Name -eq '(Default)') {
-                    Set-Item -LiteralPath $Path -Value $Value -Force -ErrorAction Stop
-                } else {
-                    Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force -ErrorAction Stop
-                }
-                Write-HostEx "  [ OK ] Applied: $Path\$Name = $desiredVal" -ForegroundColor Green
-                $script:Stats.RegistryApplied++
+            if ($Name -eq '(Default)') {
+                # (Default) задається через Set-Item
+                Set-Item -LiteralPath $Path -Value $Value -Force
+            } else {
+                Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
             }
-            catch [System.UnauthorizedAccessException] {
-                Write-HostEx "  [i] Unauthorized access. Trying reg.exe fallback for: $Path\$Name" -ForegroundColor DarkYellow
-
-                # Конвертуємо шлях для reg.exe (HKCU: → HKEY_CURRENT_USER тощо)
-                $regRootMap = @{
-                    'HKCU:' = 'HKEY_CURRENT_USER'
-                    'HKLM:' = 'HKEY_LOCAL_MACHINE'
-                }
-                $regPath = $Path
-                foreach ($prefix in $regRootMap.Keys) {
-                    if ($Path.StartsWith($prefix)) {
-                        $regPath = $Path.Replace($prefix, $regRootMap[$prefix])
-                        break
-                    }
-                }
-
-                # Мапимо типи PowerShell → reg.exe
-                $regTypeMap = @{
-                    'DWord'        = 'REG_DWORD'
-                    'String'       = 'REG_SZ'
-                    'ExpandString' = 'REG_EXPAND_SZ'
-                    'QWord'        = 'REG_QWORD'
-                    'Binary'       = 'REG_BINARY'
-                }
-                $regType = $regTypeMap[$Type]
-                if (-not $regType) { $regType = 'REG_DWORD' }
-
-                # Для Binary — перетворюємо масив байтів у hex-рядок
-                if ($Type -eq 'Binary') {
-                    $hexString = ($Value | ForEach-Object { '{0:X2}' -f $_ }) -join ' '
-                    $result = reg add "$regPath" /v "$Name" /t $regType /d "$hexString" /f 2>&1
-                } else {
-                    $result = reg add "$regPath" /v "$Name" /t $regType /d "$Value" /f 2>&1
-                }
-
-                if ($LASTEXITCODE -eq 0) {
-                    Write-HostEx "  [ OK ] Applied via reg.exe: $Path\$Name = $desiredVal" -ForegroundColor Green
-                    $script:Stats.RegistryApplied++
-                } else {
-                    throw "reg.exe failed: $result"
-                }
-            }
-            catch {
-                throw $_
-            }
+            Write-HostEx "  [ OK ] Applied: $Path\$Name = $desiredVal" -ForegroundColor Green
+            $script:Stats.RegistryApplied++
         }
     }
     catch {
@@ -158,34 +116,9 @@ function Remove-RegistryKeySafely {
             return
         }
         if ($PSCmdlet.ShouldProcess($Path, 'Remove registry key')) {
-            try {
-                Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
-                Write-HostEx "  [ OK ] Deleted key: $Path" -ForegroundColor Green
-                $script:Stats.RegistryDeleted++
-            }
-            catch [System.UnauthorizedAccessException] {
-                Write-HostEx "  [i] Unauthorized access. Trying reg.exe fallback for: $Path" -ForegroundColor DarkYellow
-
-                $regRootMap = @{
-                    'HKCU:' = 'HKEY_CURRENT_USER'
-                    'HKLM:' = 'HKEY_LOCAL_MACHINE'
-                }
-                $regPath = $Path
-                foreach ($prefix in $regRootMap.Keys) {
-                    if ($Path.StartsWith($prefix)) {
-                        $regPath = $Path.Replace($prefix, $regRootMap[$prefix])
-                        break
-                    }
-                }
-
-                $result = reg delete "$regPath" /f 2>&1
-                if ($LASTEXITCODE -eq 0) {
-                    Write-HostEx "  [ OK ] Deleted via reg.exe: $Path" -ForegroundColor Green
-                    $script:Stats.RegistryDeleted++
-                } else {
-                    throw "reg.exe failed: $result"
-                }
-            }
+            Remove-Item -Path $Path -Recurse -Force -ErrorAction Stop
+            Write-HostEx "  [ OK ] Deleted key: $Path" -ForegroundColor Green
+            $script:Stats.RegistryDeleted++
         }
     }
     catch {
