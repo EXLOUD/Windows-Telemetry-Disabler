@@ -190,7 +190,7 @@ Write-HostEx "  EEEEEEE   XX    XX   LLLLLLL   000000      UUUUuUU    DDDDDD  " 
 Write-HostEx " "
 Write-HostEx "                            PRESENTS" -ForegroundColor Cyan
 Write-HostEx " "
-Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.4" -ForegroundColor Cyan
+Write-HostEx "               PRIVACY & TELEMETRY KILLER - v1.5.6" -ForegroundColor Cyan
 Write-HostEx " "
 Write-HostEx ("="*66) -ForegroundColor Cyan
 
@@ -213,7 +213,7 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection';      Name='Allowtelemetry';                               Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection';      Name='DoNotShowFeedbackNotifications';               Value=1},
 	@{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Policies\DataCollection'; Name ='AllowTelemetry';                       Value=0},
-	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Device Metadata'; Name='PreventDeviceMetadataFromNetwork'; Value=1},
+	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Device Metadata';                     Name='PreventDeviceMetadataFromNetwork';      Value=1},
 	@{Path='HKCU:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowTelemetry'; Value=0},
 	@{Path='HKLM:\SYSTEM\DriverDatabase\Policies\Settings';            Name='DisableSendGenericDriverNotFoundToWER'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\SQMClient\Windows';      Name='CEIPEnable'; Value=0},
@@ -236,7 +236,6 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\default\System\AllowTelemetry'; Name='value'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\StorageSense'; Name='AllowStorageSenseGlobal'; Value=0},
 	@{Path='HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl\StorageTelemetry'; Name='DeviceDumpEnabled'; Value=0},
-	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Tracing\SCM\Regular'; Name='TracingDisabled'; Value=1},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\MSDeploy\3'; Name='EnableTelemetry'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy'; Name='EnableDiagnostics'; Value=0},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection'; Name='AllowCommercialDataPipeline'; Value=0},
@@ -256,12 +255,13 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\OOBE'; Name='DisablePrivacyExperience'; Value=1},
 
     # --- SPP Config ---
-	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket'; Value=1},
-	# @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
+	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='NoGenTicket';                         Value=1},
+    @{Path='HKLM:\SOFTWARE\Classes\AppID\slui.exe';                                                    Name='NoGenTicket';                         Value=1},
+	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\CurrentVersion\Software Protection Platform'; Name='AllowWindowsEntitlementReactivation'; Value=0},
 
     # --- Disable Delivery Optimization (Peer-to-Peer updates) ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config'; Name='DODownloadMode'; Value=0},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization';           Name='DODownloadMode'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization';              Name='DODownloadMode'; Value=0},
 
     # --- IWA ---
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings';      Name='EnableNegotiate'; Value=0},
@@ -272,12 +272,14 @@ $reg = @(
 
     # --- Experiments on user sys ---
     @{Path='HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\System';         Name='AllowExperimentation'; Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\DmClientService';              Name='Start';                Value=4},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'; Name='DmClientOnScenarioDownload'; Value=''; Type='String'},
 
     # --- Where y down file ---
     # @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments'; Name='SaveZoneInformation'; Value=1},
 	
 	# --- EventLog Config ---
-	# @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
+	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Steps-Recorder'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Telemetry'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Inventory'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Troubleshooter'; Name='Enabled'; Value=0},
@@ -285,12 +287,19 @@ $reg = @(
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant/Compatibility-Infrastructure-Debug'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant/Analytic'; Name='Enabled'; Value=0},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant'; Name='Enabled'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant'; Name='Enabled'; Value=0},
+
+    # --- Tel. Logger Config ---
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\SetupPlatformTel';                               Name='Start';   Value=0},
+
+    # --- Windows Platform Binary Table) ---
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager';                                               Name='DisableWpbtExecution'; Value=1},
 
     # --- Disable widgets ---
 	# --- Windows 10 ---
     @{Path='HKCU:\Software\Microsoft\PolicyManager\default\NewsAndInterests\AllowNewsAndInterests';                Name='value';               Value=0},
 	# --- Windows 11 ---
-	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';                                     Name='TaskbarDa';            Value=0},
+	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';                                    Name='TaskbarDa';            Value=0},
 	
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Dsh';                                                                Name='AllowNewsAndInterests'; Value=0},
 
@@ -322,8 +331,8 @@ $reg = @(
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\Microsoft-Windows-Rdp-Graphics-RdpIdd-Trace'; Name='Start';                            Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\Circular Kernel Context Logger'; Name='Start';                                         Value=0},
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\Autologger\SQMLogger';                      Name='Start';                                         Value=0},
-    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\NetCore';                      Name='Start';                                          Value=0},
-    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\RadioMgr';                     Name='Start';                                          Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\NetCore';                      Name='Start';                                           Value=0},
+    @{Path='HKLM:\SYSTEM\CurrentControlSet\Control\WMI\AutoLogger\RadioMgr';                     Name='Start';                                           Value=0},
 
     # --- Geolocation ---
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\lfsvc';                                Name='Start';                                        Value=4},
@@ -339,6 +348,13 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='TelemetryServiceDisabled';                     Value=1},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack\EventTranscriptKey'; Name='EnableEventTranscript';            Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack\TestHooks'; Name='DisableAsimovUpload';                       Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack\TraceManager'; Name='MiniTraceSlotEnabled';                   Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='ConnectivityNoNetworkTime';                    Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\DiagTrack';        Name='UploadPermissionReceived';                     Value=0},
+
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing';    Name='DisableWerReporting';                          Value=1},
+
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\PCHealth\ErrorReporting';                    Name='DoReport';                                     Value=0},
 
     # --- Service start types ---
     @{Path='HKLM:\SYSTEM\CurrentControlSet\Services\DiagTrack';                            Name='Start';                                          Value=4},
@@ -389,9 +405,13 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='RestrictImplicitTextCollection';                 Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\InputPersonalization';                       Name='AllowInputPersonalization';                      Value=0},
 	@{Path='HKCU:\SOFTWARE\Microsoft\InputPersonalization\TrainedDataStore';               Name='HarvestContacts';                                Value=0},
+    @{Path='HKCU:\Software\Policies\Microsoft\Control Panel\International';                Name='TurnOffAutocorrectMisspelledWords';              Value=1},
+    @{Path='HKCU:\Software\Policies\Microsoft\Control Panel\International';                Name='TurnOffHighlightMisspelledWords';                Value=1},
+    @{Path='HKCU:\Software\Policies\Microsoft\Control Panel\International';                Name='TurnOffOfferTextPredictions';                    Value=1},
     @{Path='HKCU:\Software\Microsoft\Personalization\Settings';                            Name='AcceptedPrivacyPolicy';                          Value=0},	
 	@{Path='HKCU:\Software\Microsoft\Input';                                               Name='IsInputAppPreloadEnabled';                       Value=0},
     @{Path='HKCU:\Software\Microsoft\Input\Settings';                                      Name='VoiceTypingEnabled';                             Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Input\Settings';                                      Name='LMDataLoggerEnabled';                            Value=0},
     @{Path='HKCU:\Software\Microsoft\Input\TIPC';                                          Name='Enabled';                                        Value=0},
     @{Path='HKCU:\Software\Microsoft\Input\Settings';                                      Name='InsightsEnabled';                                Value=0},	
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\TextInput';           Name='AllowLinguisticDataCollection';                  Value=0},
@@ -399,6 +419,39 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\HandwritingErrorReports';            Name='PreventHandwritingErrorReports';                 Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Speech';                                     Name='AllowSpeechModelUpdate';                         Value=0},
 	@{Path='HKCU:\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy';         Name='HasAccepted';                                    Value=0},
+    @{Path='HKCU:\Software\Policies\Microsoft\TabletTip\1.7';                              Name='DisablePrediction';                              Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\TabletTip\1.7';                              Name='DisablePrediction';                              Value=1},
+    @{Path='HKCU:\Software\Microsoft\TabletTip\1.7';                                       Name='EnablePredictionSpaceInsertion';                 Value=0},
+    @{Path='HKCU:\Software\Microsoft\TabletTip\1.7';                                       Name='EnableTextPrediction';                           Value=0},
+    @{Path='HKCU:\Software\Microsoft\TabletTip\1.7';                                       Name='EnableAutocorrection';                           Value=0},
+    @{Path='HKCU:\Software\Microsoft\TabletTip\1.7';                                       Name='EnableSpellchecking';                            Value=0},
+    @{Path='HKCU:\Software\Microsoft\TabletTip\1.7';                                       Name='EnableDoubleTapSpace';                           Value=0},
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0409'; Name='UseFluency'; Value=514},  # English (US)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0422'; Name='UseFluency'; Value=514},  # Ukrainian
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0415'; Name='UseFluency'; Value=514},  # Polish
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0407'; Name='UseFluency'; Value=514},  # German (Germany)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_040C'; Name='UseFluency'; Value=514},  # French (France)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_040A'; Name='UseFluency'; Value=514},  # Spanish (Spain, Traditional Sort)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0410'; Name='UseFluency'; Value=514},  # Italian
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0416'; Name='UseFluency'; Value=514},  # Portuguese (Brazil)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0816'; Name='UseFluency'; Value=514},  # Portuguese (Portugal)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0413'; Name='UseFluency'; Value=514},  # Dutch
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_041D'; Name='UseFluency'; Value=514},  # Swedish
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_041F'; Name='UseFluency'; Value=514},  # Turkish
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0405'; Name='UseFluency'; Value=514},  # Czech
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_041B'; Name='UseFluency'; Value=514},  # Slovak
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0424'; Name='UseFluency'; Value=514},  # Slovenian
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_040E'; Name='UseFluency'; Value=514},  # Hungarian
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0414'; Name='UseFluency'; Value=514},  # Norwegian (Bokmål)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0412'; Name='UseFluency'; Value=514},  # Korean
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0411'; Name='UseFluency'; Value=514},  # Japanese
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0804'; Name='UseFluency'; Value=514},  # Chinese (PRC)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0C0A'; Name='UseFluency'; Value=514}   # Spanish (Modern Sort)
+    @{Path='HKCU:\Software\Microsoft\Input\Locales\loc_0419'; Name='UseFluency'; Value=514},  # Russian
+
+    # --- Scheduled Diagnostics ---
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScheduledDiagnostics';               Name='EnabledExecution';                               Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\ScheduledDiagnostics';                        Name='EnabledExecution';                               Value=0},
 
     # --- CompactTelR. Block run ---
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\CompatTelRunner.exe'; Name='Debugger'; Value='%windir%\System32\taskkill.exe'; Type='String'},
@@ -409,14 +462,17 @@ $reg = @(
 	@{Path='HKLM:\Software\Policies\Microsoft\Assistance\Client\1.0'; Name='NoExplicitFeedback'; Value=1;},
     @{Path='HKLM:\Software\Policies\Microsoft\Assistance\Client\1.0'; Name='NoImplicitFeedback'; Value=1;},
 	
+    # --- Advertising ---
+    @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
+	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo';                    Name='DisabledByGroupPolicy';                          Value=1},
+    @{Path='HKCU:\Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Id';                                             Value='null'; Type='String'},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Id';                                             Value='null'; Type='String'},
+    @{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\AdvertisingInfo';  Name='Enabled';                                        Value=0},
+    @{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\AdvertisingInfo';  Name='Id';                                             Value='null'; Type='String'},
+
     # --- User settings ---
 	@{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel'; Name='{20D04FE0-3AEA-1069-A2D8-08002B30309D}'; Value=0},
-
-    @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
-	@{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo';                    Name='DisabledByGroupPolicy';                          Value=1},
-    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AdvertisingInfo';              Name='Enabled';                                        Value=0},
-    @{Path='HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\AdvertisingInfo';  Name='Enabled';                                        Value=0},
-
     @{Path='HKCU:\Control Panel\International\User Profile';                               Name='HttpAcceptLanguageOptOut';                       Value=1},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced';            Name='Start_TrackProgs';                               Value=0},
     @{Path='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\ContentDeliveryManager';       Name='SubscribedContent-338393Enabled';                Value=0},
@@ -494,6 +550,11 @@ $reg = @(
     # --- PerfTrack ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Diagnostics\PerfTrack'; Name='Disabled'; Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WDI\{9c5a40da-b965-4fc3-8781-88dd50a6299d}'; Name='ScenarioExecutionEnabled'; Value=0},
+
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WDI\{C295FBBA-FD47-46ac-8BEE-B1715EC634E5}'; Name='ScenarioExecutionEnabled'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WDI\{C295FBBA-FD47-46ac-8BEE-B1715EC634E5}'; Name='DownloadToolsEnabled';     Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\ScriptedDiagnosticsProvider\Policy';         Name='DisableQueryRemoteServer'; Value=0},
+
 	
 	# --- UserProfileEngagement ---
 	@{ Path = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\UserProfileEngagement'; Name = 'ScoobeSystemSettingEnabled'; Value = 0 },
@@ -559,22 +620,27 @@ $reg = @(
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Client';                  Name='AllowBasic';                            Value=0},
 
     # --- Windows Connect Now ---
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\UI';                        Name='DisableWcnUi';                Value=1},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableFlashConfigRegistrar'; Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\UI';                        Name='DisableWcnUi';                   Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableFlashConfigRegistrar';    Value=0},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableInBand802DOT11Registrar'; Value=0},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableUPnPRegistrar';         Value=0},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableWPDRegistrar';          Value=0},
-    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='EnableRegistrars';             Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableUPnPRegistrar';           Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='DisableWPDRegistrar';            Value=0},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\WCN\Registrars';                Name='EnableRegistrars';               Value=0},
 	
 	# --- Windows Error Reporting ---
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting';                Name='Disabled';                              Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='Disabled';                              Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='DontSendAdditionalData';                Value=1},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Consent';        Name='NewUserDefaultConsent';                 Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='LoggingDisabled';                       Value=1},
 	@{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Consent';        Name='DefaultConsent';                        Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Consent';        Name='DefaultOverrideBehavior';               Value=1},
     @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='DoReport';                              Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\WMR';            Name='Disabled';                              Value=1},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='AutoApproveOSDumps';                    Value=0},
     @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting';                Name='ChangeDumpTypeByTelemetryLevel';        Value=0},
+    @{Path='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting';                Name='MachineID'; Value='{00000000-0000-0000-0000-000000000000}'; Type='String'},
+    @{Path='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting';       Name='BypassDataThrottling';                  Value=0},
 
     # --- Windows Media Player ---
     @{Path='HKCU:\SOFTWARE\Microsoft\MediaPlayer\Preferences';                         Name='AcceptedPrivacyStatement';              Value=1},
@@ -715,12 +781,13 @@ Write-HostEx "`n[>] STEP 3: Disabling telemetry services..." -ForegroundColor Ma
 $services = @(
     'DiagTrack',
     'dmwappushservice',
-    'PcaSvc',
+    # 'PcaSvc',
     'wisvc',
     'WerSvc',
     'wercplsupport',
     'Telemetry',
     'WpcMonSvc',
+    'InventorySvc',
     'UnistoreSvc', # --- Turn off email, contacts, calendar and personal data syncing ---
 
     # --- Disable/uncomment CDPUserSvc if you don't use Night Light, Virtual Desktops, Timeline, or the Your Phone app. --- 
